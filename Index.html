@@ -1,85 +1,302 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8"><title>Solicitud PTD</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-  <style>
-    body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif;}
-    .navbar-custom { background: linear-gradient(90deg, #003366 0%, #00509e 100%); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
-    .card-wizard { border: none; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.08);}
-    .step-header { color: #003366; font-weight: 700; border-bottom: 2px solid #e9ecef; padding-bottom: 12px; margin-bottom: 24px;}
-    .hidden { display: none !important; }
-    canvas.firma-box { width: 100%; height: 180px; border: 2px dashed #00509e; border-radius: 8px; background: #fafafa;}
-  </style>
-</head>
-<body>
-  <nav class="navbar navbar-dark navbar-custom mb-4"><div class="container"><span class="navbar-brand fw-bold">Sistema de Permisos de Trabajo (PTD)</span></div></nav>
-  <div class="container mb-5"><div class="card card-wizard p-4 mx-auto" style="max-width: 900px;">
-      
-      <div id="loader" class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-3 text-muted">Sincronizando sistemas...</p></div>
 
-      <form id="formPTD" class="hidden">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitud PTD</title>
+  <?!= include('Estilos') ?>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+</head>
+
+<body>
+  <nav class="ptd-nav">
+    <div class="container"><span class="brand"><i class="bi bi-shield-check"></i> Sistema de Permisos de Trabajo
+        (PTD)</span></div>
+  </nav>
+
+  <div class="container mb-5">
+    <div class="ptd-card">
+      <div id="loader" class="ptd-loader">
+        <div class="spinner-border"></div>
+        <p>Sincronizando sistemas...</p>
+      </div>
+
+      <form id="formPTD" class="hidden" autocomplete="off">
         <datalist id="listEmpresas"></datalist><datalist id="listBuk"></datalist>
 
+        <!-- PROGRESS BAR -->
+        <div class="progress-steps" id="progressBar">
+          <div class="step-item">
+            <div class="step-dot active" id="dot1">1</div>
+            <div class="step-label">Ubicación</div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot" id="dot2">2</div>
+            <div class="step-label">Validadores</div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot" id="dot3">3</div>
+            <div class="step-label">Actividad</div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot" id="dot4">4</div>
+            <div class="step-label">Riesgos</div>
+          </div>
+          <div class="step-item">
+            <div class="step-dot" id="dot5">5</div>
+            <div class="step-label">Firma</div>
+          </div>
+        </div>
+
+        <!-- STEP 1 -->
         <div id="step1">
-          <h5 class="step-header">Módulo 1: Ubicación y Ejecutantes</h5>
+          <h5 class="step-header"><i class="bi bi-geo-alt-fill"></i>Módulo 1: Ubicación y Ejecutantes</h5>
           <div class="row g-3">
-            <div class="col-md-6"><label>Tu Correo Google</label><input type="email" id="correoLogin" class="form-control" required></div>
-            <div class="col-md-6"><label>Empresa Contratista</label><input type="text" id="empresa" list="listEmpresas" class="form-control"></div>
-            <div class="col-md-4"><label>Analista SST</label><input type="text" id="nombreSST" class="form-control"></div>
-            <div class="col-md-4"><label>Cédula SST</label><input type="number" id="cedulaSST" class="form-control"></div>
-            <div class="col-md-4"><label>Área/Equipo</label><input type="text" id="areaEquipo" class="form-control"></div>
-            <div class="col-md-4"><label>Unidad Negocio</label><select id="unidadNegocio" class="form-select"></select></div>
-            <div class="col-md-4"><label>Localidad</label><select id="localidad" class="form-select" onchange="filtroSedes()"></select></div>
-            <div class="col-md-4"><label>Sede</label><select id="sede" class="form-select"></select></div>
+            <div class="col-md-6"><label class="form-label">Correo Google <span
+                  class="text-danger">*</span></label><input type="email" id="correoLogin" class="form-control"
+                required></div>
+            <div class="col-md-6"><label class="form-label">Empresa Contratista <span
+                  class="text-danger">*</span></label><input type="text" id="empresa" list="listEmpresas"
+                class="form-control" required></div>
+            <div class="col-md-4"><label class="form-label">Analista SST <span
+                  class="text-danger">*</span></label><input type="text" id="nombreSST" class="form-control" required>
+            </div>
+            <div class="col-md-4"><label class="form-label">Cédula Analista <span
+                  class="text-danger">*</span></label><input type="number" id="cedulaSST" class="form-control" required>
+            </div>
+            <div class="col-md-4"><label class="form-label">Área/Equipo <span class="text-danger">*</span></label><input
+                type="text" id="areaEquipo" class="form-control" required></div>
+            <div class="col-md-4"><label class="form-label">Unidad de Negocio <span
+                  class="text-danger">*</span></label><select id="unidadNegocio" class="form-select" required></select>
+            </div>
+            <div class="col-md-4"><label class="form-label">Localidad <span class="text-danger">*</span></label><select
+                id="localidad" class="form-select" onchange="filtroSedes()" required></select></div>
+            <div class="col-md-4"><label class="form-label">Sede</label><select id="sede" class="form-select"></select>
+            </div>
           </div>
-          <div class="mt-4 text-end"><button type="button" class="btn btn-primary px-4" onclick="nav(2)">Continuar</button></div>
+          <div class="mt-4">
+            <label class="form-label"><i class="bi bi-camera-fill"></i> Foto del Área <span
+                class="text-danger">*</span></label>
+            <input type="file" id="fotoArea" accept="image/*" capture="environment" class="form-control"
+              onchange="previewFoto(this)">
+            <img id="fotoPreview" class="foto-preview" alt="Vista previa">
+          </div>
+          <div class="mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0 fw-semibold"><i class="bi bi-people-fill"></i> Trabajadores Ejecutantes
+                <span class="text-danger">*</span></label>
+              <button type="button" class="btn btn-outline-back btn-sm" onclick="agregarTrabajador()"><i
+                  class="bi bi-plus-circle"></i> Agregar</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered tabla-din mb-0">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Cédula</th>
+                    <th>Cargo</th>
+                    <th class="text-center" style="width:42px"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyTrab">
+                  <tr>
+                    <td><input type="text" class="form-control form-control-sm t-nombre" required></td>
+                    <td><input type="text" class="form-control form-control-sm t-cedula" required></td>
+                    <td><input type="text" class="form-control form-control-sm t-cargo"></td>
+                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm"
+                        onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-4 text-end"><button type="button" class="btn btn-ptd" onclick="nav(2)">Continuar <i
+                class="bi bi-arrow-right"></i></button></div>
         </div>
 
+        <!-- STEP 2 -->
         <div id="step2" class="hidden">
-          <h5 class="step-header">Módulo 2: Validadores Internos</h5>
+          <h5 class="step-header"><i class="bi bi-building"></i>Módulo 2: Estructura Organizativa</h5>
           <div class="row g-3">
-            <div class="col-12"><label class="fw-bold">Solicitante Interno (Buscar)</label><input type="text" id="solic" list="listBuk" class="form-control border-primary" onchange="autoBuk('solic')"></div>
-            <div class="col-12 mt-4"><label class="fw-bold">Dueño del Área (Buscar)</label><input type="text" id="dueno" list="listBuk" class="form-control border-primary" onchange="autoBuk('dueno')"></div>
+            <div class="col-12"><label class="form-label fw-semibold" style="color:var(--primary)">Solicitante Interno
+                <span class="text-danger">*</span></label><input type="text" id="solic" list="listBuk"
+                class="form-control" onchange="autoBuk('solic')" placeholder="Escriba nombre..."></div>
+            <div class="col-md-6"><label class="form-label">Proceso (Auto)</label><input type="text"
+                id="procesoSolicitante" class="form-control" readonly></div>
+            <div class="col-md-6"><label class="form-label">Departamento (Auto)</label><input type="text"
+                id="deptoSolicitante" class="form-control" readonly></div>
+            <div class="col-12 mt-3"><label class="form-label fw-semibold" style="color:var(--emerald)">Dueño del Área
+                <span class="text-danger">*</span></label><input type="text" id="dueno" list="listBuk"
+                class="form-control" onchange="autoBuk('dueno')" placeholder="Escriba nombre..."></div>
+            <div class="col-md-6"><label class="form-label">Proceso (Auto)</label><input type="text" id="procesoDueno"
+                class="form-control" readonly></div>
+            <div class="col-md-6"><label class="form-label">Departamento (Auto)</label><input type="text"
+                id="deptoDueno" class="form-control" readonly></div>
           </div>
-          <div class="d-flex justify-content-between mt-5"><button type="button" class="btn btn-outline-secondary" onclick="nav(1)">Atrás</button><button type="button" class="btn btn-primary px-4" onclick="nav(3)">Continuar</button></div>
+          <div class="d-flex justify-content-between mt-5"><button type="button" class="btn btn-outline-back"
+              onclick="nav(1)"><i class="bi bi-arrow-left"></i> Atrás</button><button type="button" class="btn btn-ptd"
+              onclick="nav(3)">Continuar <i class="bi bi-arrow-right"></i></button></div>
         </div>
 
+        <!-- STEP 3 -->
         <div id="step3" class="hidden">
-          <h5 class="step-header">Módulo 3: Actividad y Riesgos</h5>
+          <h5 class="step-header"><i class="bi bi-clipboard-data"></i>Módulo 3: Detalle de Actividad</h5>
           <div class="row g-3">
-            <div class="col-12"><label>Descripción del Trabajo</label><textarea id="desc" class="form-control" rows="2"></textarea></div>
-            <div class="col-6"><label class="text-danger fw-bold">¿Alto Riesgo?</label><select id="altoRiesgo" class="form-select border-danger" onchange="chkAR()"><option value="NO">NO</option><option value="SI">SI</option></select></div>
-            <div class="col-6 hidden" id="divTipo"><label>Tipo (Ctrl+Clic múltiples)</label><select id="tipoRiesgo" class="form-select" multiple size="3"></select></div>
+            <div class="col-12"><label class="form-label">Descripción del Trabajo <span
+                  class="text-danger">*</span></label><textarea id="desc" class="form-control" rows="2" required
+                placeholder="¿Qué se va a hacer?"></textarea></div>
+            <div class="col-12"><label class="form-label">Tareas Principales <span
+                  class="text-danger">*</span></label><textarea id="tareasPrincipales" class="form-control" rows="3"
+                required placeholder="Paso a paso de la labor..."></textarea></div>
+            <div class="col-12"><label class="form-label">Equipos/Herramientas <span
+                  class="text-danger">*</span></label><textarea id="equiposHerramientas" class="form-control" rows="2"
+                required placeholder="Detalle de herramientas..."></textarea></div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold" style="color:var(--crimson)">¿Es de Alto Riesgo? <span
+                  class="text-danger">*</span></label>
+              <select id="altoRiesgo" class="form-select" onchange="chkAR()">
+                <option value="NO">NO</option>
+                <option value="SI">SI</option>
+              </select>
+            </div>
+            <div class="col-md-6 hidden" id="divTipo">
+              <label class="form-label">Tipo de Trabajo AR (múltiple)</label>
+              <select id="tipoRiesgo" class="form-select" multiple size="4"
+                title="Tipo de trabajo de alto riesgo"></select>
+              <small class="text-muted">Ctrl+Clic para múltiple</small>
+            </div>
           </div>
-          <div class="d-flex justify-content-between mt-5"><button type="button" class="btn btn-outline-secondary" onclick="nav(2)">Atrás</button><button type="button" class="btn btn-primary px-4" onclick="nav(4)">Firma Final</button></div>
+          <div id="zonaGases" class="zona-gases hidden mt-3">
+            <h6 class="fw-bold" style="color:var(--amber)"><i class="bi bi-wind"></i> Medición de Atmósfera (Espacio
+              Confinado)</h6>
+            <div class="row g-2 mt-1">
+              <div class="col-3"><label class="small">O₂ (%)</label><input type="text" id="gasO2"
+                  class="form-control form-control-sm" placeholder="20.9"></div>
+              <div class="col-3"><label class="small">LEL (%)</label><input type="text" id="gasLEL"
+                  class="form-control form-control-sm" placeholder="0"></div>
+              <div class="col-3"><label class="small">CO (ppm)</label><input type="text" id="gasCO"
+                  class="form-control form-control-sm" placeholder="0"></div>
+              <div class="col-3"><label class="small">H₂S (ppm)</label><input type="text" id="gasH2S"
+                  class="form-control form-control-sm" placeholder="0"></div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between mt-5"><button type="button" class="btn btn-outline-back"
+              onclick="nav(2)"><i class="bi bi-arrow-left"></i> Atrás</button><button type="button" class="btn btn-ptd"
+              onclick="nav(4)">Matriz de Riesgos <i class="bi bi-arrow-right"></i></button></div>
         </div>
 
+        <!-- STEP 4 -->
         <div id="step4" class="hidden">
-          <h5 class="step-header">Firma del Analista Solicitante</h5>
-          <canvas id="pad" class="firma-box"></canvas>
-          <div class="d-grid mt-4"><button type="button" class="btn btn-success btn-lg" onclick="guardar()">Solicitar Permiso PTD</button></div>
+          <h5 class="step-header"><i class="bi bi-exclamation-triangle-fill"></i>Módulo 3b: Identificación de Peligros
+          </h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-muted mb-0 small">Identifique los peligros asociados a esta actividad.</p>
+            <button type="button" class="btn btn-ptd-danger btn-sm" onclick="agregarRiesgo()"><i
+                class="bi bi-plus-circle"></i> Agregar Riesgo</button>
+          </div>
+          <div id="contenedorRiesgos"></div>
+          <div class="d-flex justify-content-between mt-4"><button type="button" class="btn btn-outline-back"
+              onclick="nav(3)"><i class="bi bi-arrow-left"></i> Atrás</button><button type="button" class="btn btn-ptd"
+              onclick="nav(5)">Firma Final <i class="bi bi-arrow-right"></i></button></div>
         </div>
+
+        <!-- STEP 5 -->
+        <div id="step5" class="hidden">
+          <h5 class="step-header"><i class="bi bi-pen-fill"></i>Firma del Analista Solicitante</h5>
+          <p class="text-muted small">Firme en el recuadro para confirmar la veracidad de los datos.</p>
+          <canvas id="pad" class="firma-box"></canvas>
+          <div class="text-end mt-2"><button type="button" class="btn btn-outline-back btn-sm" onclick="sp.clear()"><i
+                class="bi bi-eraser"></i> Limpiar</button></div>
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-back" onclick="nav(4)"><i class="bi bi-arrow-left"></i>
+              Atrás</button>
+            <button type="button" class="btn btn-ptd-success btn-lg px-5" id="btnGuardar" onclick="guardar()"><i
+                class="bi bi-send-check"></i> Solicitar Permiso PTD</button>
+          </div>
+        </div>
+
+        <div id="stepResult" class="hidden"></div>
       </form>
-  </div></div>
+    </div>
+  </div>
+
   <script>
-    let conf={}, buk=[], sp;
+    let conf = {}, buk = [], sp;
+    let contadorRiesgos = 0;
+    const TOTAL_STEPS = 5;
+
     window.onload = () => {
       sp = new SignaturePad(document.getElementById('pad'));
-      google.script.run.withSuccessHandler(r=>{conf=r; iniL();}).obtenerListasConfig();
-      google.script.run.withSuccessHandler(r=>{buk=r; iniB();}).obtenerColaboradoresBuk();
+      google.script.run.withSuccessHandler(r => { conf = r; inicializarListas(); }).withFailureHandler(e => alert('Error: ' + e.message)).obtenerListasConfig();
+      google.script.run.withSuccessHandler(r => { buk = r; inicializarBuk(); }).obtenerColaboradoresBuk();
     };
-    function iniL() { document.getElementById('listEmpresas').innerHTML = conf.empresas.map(e=>`<option value="${e}">`).join(''); conf.unidades.forEach(u=>document.getElementById('unidadNegocio').innerHTML+=`<option>${u}</option>`); conf.localidades.forEach(l=>document.getElementById('localidad').innerHTML+=`<option>${l}</option>`); conf.tiposTrabajo.forEach(t=>document.getElementById('tipoRiesgo').innerHTML+=`<option value="${t}">${t}</option>`); document.getElementById('loader').classList.add('hidden'); document.getElementById('formPTD').classList.remove('hidden'); }
-    function iniB() { document.getElementById('listBuk').innerHTML = buk.map(b=>`<option value="${b.nombre} (${b.email})">`).join(''); }
-    function filtroSedes() { let l=document.getElementById('localidad').value; let s=document.getElementById('sede'); s.innerHTML=''; conf.sedesMap.forEach(m=>{let p=m.split('|'); if(p[0]===l) s.innerHTML+=`<option>${p[1]}</option>`;}); }
-    function nav(s) { document.querySelectorAll('[id^="step"]').forEach(e=>e.classList.add('hidden')); document.getElementById('step'+s).classList.remove('hidden'); }
-    function chkAR() { document.getElementById('divTipo').classList.toggle('hidden', document.getElementById('altoRiesgo').value==='NO'); }
+
+    function inicializarListas() {
+      document.getElementById('listEmpresas').innerHTML = conf.empresas.map(e => '<option value="' + e + '">').join('');
+      document.getElementById('unidadNegocio').innerHTML = '<option value="">-- Seleccione --</option>' + conf.unidades.map(u => '<option>' + u + '</option>').join('');
+      document.getElementById('localidad').innerHTML = '<option value="">-- Seleccione --</option>' + conf.localidades.map(l => '<option>' + l + '</option>').join('');
+      document.getElementById('tipoRiesgo').innerHTML = conf.tiposTrabajo.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('formPTD').classList.remove('hidden');
+      agregarRiesgo();
+    }
+    function inicializarBuk() { document.getElementById('listBuk').innerHTML = buk.map(b => '<option value="' + b.nombre + ' (' + b.email + ')">').join(''); }
+    function filtroSedes() { let l = document.getElementById('localidad').value; let s = document.getElementById('sede'); s.innerHTML = '<option value="">-- Sin sede --</option>'; conf.sedesMap.forEach(m => { let p = m.split('|'); if (p[0] === l) s.innerHTML += '<option>' + p[1] + '</option>'; }); }
+
+    function nav(s) {
+      let cur = document.querySelector('[id^="step"]:not(.hidden)');
+      if (cur) { let cn = parseInt(cur.id.replace('step', '')); if (s > cn && !validarStep(cn)) return; }
+      for (let i = 1; i <= TOTAL_STEPS; i++) { document.getElementById('step' + i).classList.add('hidden'); let d = document.getElementById('dot' + i); d.classList.remove('active'); if (i < s) d.classList.add('done'); else d.classList.remove('done'); }
+      document.getElementById('step' + s).classList.remove('hidden'); document.getElementById('dot' + s).classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function validarStep(n) {
+      if (n === 1) { let c = ['correoLogin', 'empresa', 'nombreSST', 'cedulaSST', 'areaEquipo', 'unidadNegocio', 'localidad']; for (let x of c) { if (!document.getElementById(x).value.trim()) { alert('Complete todos los campos obligatorios.'); document.getElementById(x).focus(); return false; } } let rows = document.getElementById('tbodyTrab').rows; if (!rows.length) { alert('Agregue al menos un trabajador.'); return false; } for (let r of rows) { if (!r.querySelector('.t-nombre').value.trim() || !r.querySelector('.t-cedula').value.trim()) { alert('Complete datos de trabajadores.'); return false; } } return true; }
+      if (n === 2) { if (!document.getElementById('solic').value.trim() || !document.getElementById('dueno').value.trim()) { alert('Seleccione Solicitante y Dueño del Área.'); return false; } return true; }
+      if (n === 3) { if (!document.getElementById('desc').value.trim() || !document.getElementById('tareasPrincipales').value.trim() || !document.getElementById('equiposHerramientas').value.trim()) { alert('Complete descripción, tareas y equipos.'); return false; } return true; }
+      if (n === 4) { let cards = document.querySelectorAll('.riesgo-card'); for (let c of cards) { if (!c.querySelector('.r-peligro').value || !c.querySelector('.r-severidad').value || !c.querySelector('.r-probabilidad').value || !c.querySelector('.r-jerarquia').value || !c.querySelector('.r-controles').value.trim()) { alert('Complete todos los campos de riesgos.'); return false; } } return true; }
+      return true;
+    }
+
+    function chkAR() { let v = document.getElementById('altoRiesgo').value === 'SI'; document.getElementById('divTipo').classList.toggle('hidden', !v); verificarGases(); }
+    function verificarGases() { let t = Array.from(document.getElementById('tipoRiesgo').selectedOptions).map(o => o.value); document.getElementById('zonaGases').classList.toggle('hidden', !t.some(x => x.toLowerCase().includes('confinado'))); }
+    document.addEventListener('change', function (e) { if (e.target.id === 'tipoRiesgo') verificarGases(); });
+
+    function autoBuk(tipo) {
+      let v = document.getElementById(tipo === 'solic' ? 'solic' : 'dueno').value;
+      let f = buk.find(b => b.nombre + ' (' + b.email + ')' === v);
+      if (tipo === 'solic') { document.getElementById('procesoSolicitante').value = f ? f.proceso : ''; document.getElementById('deptoSolicitante').value = f ? f.departamento : ''; }
+      else { document.getElementById('procesoDueno').value = f ? f.proceso : ''; document.getElementById('deptoDueno').value = f ? f.departamento : ''; }
+    }
+
+    function agregarTrabajador() { document.getElementById('tbodyTrab').insertAdjacentHTML('beforeend', '<tr><td><input type="text" class="form-control form-control-sm t-nombre" required></td><td><input type="text" class="form-control form-control-sm t-cedula" required></td><td><input type="text" class="form-control form-control-sm t-cargo"></td><td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td></tr>'); }
+    function eliminarFila(b) { let tb = b.closest('tbody'); if (tb.rows.length > 1) b.closest('tr').remove(); else alert('Debe haber al menos un trabajador.'); }
+    function previewFoto(i) { let p = document.getElementById('fotoPreview'); if (i.files && i.files[0]) { let r = new FileReader(); r.onload = e => { p.src = e.target.result; p.style.display = 'block'; }; r.readAsDataURL(i.files[0]); } else p.style.display = 'none'; }
+
+    function agregarRiesgo() {
+      contadorRiesgos++; let n = contadorRiesgos;
+      let op = s => conf[s] ? conf[s].map(x => '<option value="' + x + '">' + x + '</option>').join('') : '';
+      document.getElementById('contenedorRiesgos').insertAdjacentHTML('beforeend',
+        '<div class="riesgo-card" id="riesgo' + n + '"><div class="d-flex justify-content-between align-items-center mb-2"><span class="badge" style="background:var(--crimson)">Riesgo #' + n + '</span><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarRiesgo(' + n + ')"><i class="bi bi-x-circle"></i></button></div><div class="row g-2"><div class="col-md-6"><label class="small fw-semibold">Peligro *</label><select class="form-select form-select-sm r-peligro" title="Peligro"><option value="">-- Seleccione --</option>' + op('peligros') + '</select></div><div class="col-md-6"><label class="small fw-semibold">Jerarquía de Control *</label><select class="form-select form-select-sm r-jerarquia" title="Jerarquía"><option value="">-- Seleccione --</option>' + op('jerarquia') + '</select></div><div class="col-md-4"><label class="small fw-semibold">Severidad *</label><select class="form-select form-select-sm r-severidad" onchange="calcRI(this)" title="Severidad"><option value="">-- --</option>' + op('severidad') + '</select></div><div class="col-md-4"><label class="small fw-semibold">Probabilidad *</label><select class="form-select form-select-sm r-probabilidad" onchange="calcRI(this)" title="Probabilidad"><option value="">-- --</option>' + op('probabilidad') + '</select></div><div class="col-md-4"><label class="small fw-semibold">Riesgo Inherente</label><input type="text" class="form-control form-control-sm r-inherente" readonly placeholder="Auto"></div><div class="col-12"><label class="small fw-semibold">Controles Aplicados *</label><textarea class="form-control form-control-sm r-controles" rows="2" placeholder="Medidas preventivas..."></textarea></div></div></div>');
+    }
+    function eliminarRiesgo(n) { let c = document.getElementById('contenedorRiesgos'); if (c.children.length > 1) document.getElementById('riesgo' + n).remove(); else alert('Mínimo un riesgo.'); }
+    function calcRI(sel) { let card = sel.closest('.riesgo-card'); let s = card.querySelector('.r-severidad').value; let p = card.querySelector('.r-probabilidad').value; if (s && p) { let sv = parseInt(s) || 0; let pv = parseInt(p) || 0; let ri = sv * pv; let nv = ri <= 2 ? 'Bajo' : ri <= 6 ? 'Medio' : ri <= 9 ? 'Alto' : 'Crítico'; card.querySelector('.r-inherente').value = ri + ' (' + nv + ')'; } }
+
     function guardar() {
-      if(sp.isEmpty()) return alert("Firme el documento.");
-      document.querySelector('.btn-success').innerText="Guardando...";
-      let d = { correoLogin: document.getElementById('correoLogin').value, empresa: document.getElementById('empresa').value, nombreSST: document.getElementById('nombreSST').value, cedulaSST: document.getElementById('cedulaSST').value, unidadNegocio: document.getElementById('unidadNegocio').value, localidad: document.getElementById('localidad').value, sede: document.getElementById('sede').value, areaEquipo: document.getElementById('areaEquipo').value, solicitanteInterno: document.getElementById('solic').value, deptoSolicitante:'', procesoSolicitante:'', duenoArea: document.getElementById('dueno').value, deptoDueno:'', procesoDueno:'', descripcion: document.getElementById('desc').value, altoRiesgo: document.getElementById('altoRiesgo').value, tipoRiesgo: Array.from(document.getElementById('tipoRiesgo').selectedOptions).map(o=>o.value).join(','), gases:{o2:'', lel:'', co:'', h2s:''}, firmaBase64: sp.toDataURL(), trabajadores:[], riesgos:[] };
-      google.script.run.withSuccessHandler(r=>{ document.getElementById('step4').innerHTML=`<div class='alert alert-success'>Permiso Registrado: <b>${r.idPT}</b></div>`; }).guardarNuevoPT(d);
+      if (sp.isEmpty()) { alert('Firme el documento.'); return; }
+      let btn = document.getElementById('btnGuardar'); btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...'; btn.disabled = true;
+      let trabajadores = []; for (let f of document.getElementById('tbodyTrab').rows) { trabajadores.push({ nombre: f.querySelector('.t-nombre').value.trim(), cedula: f.querySelector('.t-cedula').value.trim(), cargo: f.querySelector('.t-cargo').value.trim() }); }
+      let riesgos = []; for (let c of document.querySelectorAll('.riesgo-card')) { riesgos.push({ peligro: c.querySelector('.r-peligro').value, severidad: c.querySelector('.r-severidad').value, probabilidad: c.querySelector('.r-probabilidad').value, jerarquia: c.querySelector('.r-jerarquia').value, controles: c.querySelector('.r-controles').value.trim() }); }
+      let fotoPromise = new Promise(resolve => { let fi = document.getElementById('fotoArea'); if (fi.files && fi.files[0]) { let r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(fi.files[0]); } else resolve(''); });
+      fotoPromise.then(foto64 => {
+        let tipoSel = Array.from(document.getElementById('tipoRiesgo').selectedOptions).map(o => o.value).join(', ');
+        if (document.getElementById('altoRiesgo').value === 'NO') tipoSel = 'N/A';
+        let d = { correoLogin: document.getElementById('correoLogin').value.trim(), empresa: document.getElementById('empresa').value.trim(), nombreSST: document.getElementById('nombreSST').value.trim(), cedulaSST: document.getElementById('cedulaSST').value.trim(), unidadNegocio: document.getElementById('unidadNegocio').value, localidad: document.getElementById('localidad').value, sede: document.getElementById('sede').value, areaEquipo: document.getElementById('areaEquipo').value.trim(), fotoAreaBase64: foto64, solicitanteInterno: document.getElementById('solic').value, deptoSolicitante: document.getElementById('deptoSolicitante').value, procesoSolicitante: document.getElementById('procesoSolicitante').value, duenoArea: document.getElementById('dueno').value, deptoDueno: document.getElementById('deptoDueno').value, procesoDueno: document.getElementById('procesoDueno').value, descripcion: document.getElementById('desc').value.trim(), tareasPrincipales: document.getElementById('tareasPrincipales').value.trim(), equiposHerramientas: document.getElementById('equiposHerramientas').value.trim(), altoRiesgo: document.getElementById('altoRiesgo').value, tipoRiesgo: tipoSel, gases: { o2: document.getElementById('gasO2').value || '', lel: document.getElementById('gasLEL').value || '', co: document.getElementById('gasCO').value || '', h2s: document.getElementById('gasH2S').value || '' }, firmaBase64: sp.toDataURL(), trabajadores: trabajadores, riesgos: riesgos };
+        google.script.run.withSuccessHandler(r => { if (r.success) { document.querySelectorAll('[id^="step"]').forEach(e => e.classList.add('hidden')); document.getElementById('stepResult').classList.remove('hidden'); document.getElementById('stepResult').innerHTML = '<div class="success-screen"><div class="icon"><i class="bi bi-check-circle-fill"></i></div><h4>¡Permiso Registrado!</h4><p class="pt-id">' + r.idPT + '</p><p class="text-muted">' + (r.requiereMedico ? 'Enviado al Servicio Médico para validación.' : 'Enviado a los Validadores para aprobación.') + '</p><div class="info-bar mt-3"><small>Se ha notificado por correo a los responsables del siguiente paso.</small></div></div>'; } else { alert('Error: ' + r.message); btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD'; btn.disabled = false; } }).withFailureHandler(e => { alert('Error: ' + e.message); btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD'; btn.disabled = false; }).guardarNuevoPT(d);
+      });
     }
   </script>
-</body></html>
+</body>
+
+</html>

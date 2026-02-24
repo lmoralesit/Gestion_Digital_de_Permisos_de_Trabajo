@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría PTD</title>
+    <?!= include('Estilos') ?>
+    <style>
+        .gauge {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0 auto;
+            transition: all .3s;
+            border: 4px solid var(--border)
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="ptd-nav">
+        <div class="container"><span class="brand"><i class="bi bi-shield-check"></i> Sistema de Permisos de Trabajo
+                (PTD)</span></div>
+    </nav>
+
+    <div class="container mb-5">
+        <div class="ptd-card">
+            <input type="hidden" id="tk" value="<?= token ?>">
+            <div id="loader" class="ptd-loader">
+                <div class="spinner-border"></div>
+                <p>Cargando datos del permiso...</p>
+            </div>
+            <div id="cont" class="hidden">
+                <h5 class="step-header"><i class="bi bi-clipboard-data"></i>Módulo 6: Auditoría de Campo</h5>
+
+                <div class="info-bar mb-4">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="info-label">Permiso</div>
+                            <div class="info-value" id="lblPT"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">Empresa</div>
+                            <div class="info-value" id="lblEmpresa"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">Área</div>
+                            <div class="info-value" id="lblArea"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">Estatus</div>
+                            <div class="info-value"><span class="badge" style="background:var(--emerald)"
+                                    id="lblEstatus"></span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>Evalúe cada criterio de
+                    cumplimiento en campo. El porcentaje se calcula automáticamente.</p>
+
+                <div class="check-item"><label class="fw-semibold mb-0"><i class="bi bi-shield-fill-check me-2"
+                            style="color:var(--primary)"></i>Uso de EPP</label><select
+                        class="form-select form-select-sm aud-chk" id="audEPP" title="EPP" onchange="calcPct()"
+                        style="width:auto">
+                        <option value="">-- --</option>
+                        <option value="Cumple">✅ Cumple</option>
+                        <option value="No Cumple">❌ No Cumple</option>
+                    </select></div>
+                <div class="check-item"><label class="fw-semibold mb-0"><i class="bi bi-droplet-half me-2"
+                            style="color:var(--teal)"></i>Higiene Industrial</label><select
+                        class="form-select form-select-sm aud-chk" id="audHigiene" title="Higiene" onchange="calcPct()"
+                        style="width:auto">
+                        <option value="">-- --</option>
+                        <option value="Cumple">✅ Cumple</option>
+                        <option value="No Cumple">❌ No Cumple</option>
+                    </select></div>
+                <div class="check-item"><label class="fw-semibold mb-0"><i class="bi bi-tools me-2"
+                            style="color:var(--text-mid)"></i>Equipos y Herramientas</label><select
+                        class="form-select form-select-sm aud-chk" id="audEquipos" title="Equipos" onchange="calcPct()"
+                        style="width:auto">
+                        <option value="">-- --</option>
+                        <option value="Cumple">✅ Cumple</option>
+                        <option value="No Cumple">❌ No Cumple</option>
+                    </select></div>
+                <div class="check-item"><label class="fw-semibold mb-0"><i class="bi bi-journal-check me-2"
+                            style="color:var(--emerald)"></i>Ejecución del Procedimiento</label><select
+                        class="form-select form-select-sm aud-chk" id="audProc" title="Procedimiento"
+                        onchange="calcPct()" style="width:auto">
+                        <option value="">-- --</option>
+                        <option value="Cumple">✅ Cumple</option>
+                        <option value="No Cumple">❌ No Cumple</option>
+                    </select></div>
+                <div class="check-item"><label class="fw-semibold mb-0"><i class="bi bi-exclamation-triangle-fill me-2"
+                            style="color:var(--crimson)"></i>Controles de Emergencia</label><select
+                        class="form-select form-select-sm aud-chk" id="audEmerg" title="Emergencia" onchange="calcPct()"
+                        style="width:auto">
+                        <option value="">-- --</option>
+                        <option value="Cumple">✅ Cumple</option>
+                        <option value="No Cumple">❌ No Cumple</option>
+                    </select></div>
+                <div class="check-item"><label class="fw-semibold mb-0"><i class="bi bi-tree-fill me-2"
+                            style="color:var(--emerald)"></i>Gestión Ambiental</label><select
+                        class="form-select form-select-sm aud-chk" id="audAmb" title="Ambiental" onchange="calcPct()"
+                        style="width:auto">
+                        <option value="">-- --</option>
+                        <option value="Cumple">✅ Cumple</option>
+                        <option value="No Cumple">❌ No Cumple</option>
+                    </select></div>
+
+                <div class="text-center my-4">
+                    <div class="gauge" id="gaugeCircle" style="background:var(--bg-page);color:var(--text-light)">–
+                    </div>
+                    <p class="mt-2 fw-bold text-muted" id="pctLabel">Complete los criterios</p>
+                </div>
+
+                <div class="mb-3"><label class="form-label fw-semibold">Observaciones / Hallazgos</label><textarea
+                        id="audObs" class="form-control" rows="3" placeholder="Detalle de hallazgos..."></textarea>
+                </div>
+                <div class="mb-3"><label class="form-label fw-semibold">Correo del Auditor SSA <span
+                            class="text-danger">*</span></label><input type="email" id="audEmail" class="form-control"
+                        placeholder="auditor@correo.com" required></div>
+
+                <button class="btn btn-ptd-warning btn-lg w-100" id="btnGuardar" onclick="guardarAud()"><i
+                        class="bi bi-clipboard-check"></i> Guardar Auditoría</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = () => {
+            google.script.run.withSuccessHandler(r => {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('cont').classList.remove('hidden');
+                if (!r.success) { document.getElementById('cont').innerHTML = '<div class="alert alert-danger">' + r.message + '</div>'; return; }
+                document.getElementById('lblPT').innerText = r.pt;
+                document.getElementById('lblEmpresa').innerText = r.empresa;
+                document.getElementById('lblArea').innerText = r.area;
+                document.getElementById('lblEstatus').innerText = r.estatus;
+            }).withFailureHandler(e => {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('cont').classList.remove('hidden');
+                document.getElementById('cont').innerHTML = '<div class="alert alert-danger">Error: ' + e.message + '</div>';
+            }).obtenerDatosAuditoria(document.getElementById('tk').value);
+        };
+
+        function calcPct() {
+            let checks = document.querySelectorAll('.aud-chk'); let total = 0, cumple = 0;
+            checks.forEach(c => { if (c.value) { total++; if (c.value === 'Cumple') cumple++; } });
+            let g = document.getElementById('gaugeCircle'), l = document.getElementById('pctLabel');
+            if (total === 6) {
+                let pct = Math.round((cumple / 6) * 1000) / 10; g.innerText = pct + '%'; l.innerText = cumple + ' de 6 criterios cumplidos';
+                if (pct >= 80) { g.style.background = '#dcfce7'; g.style.color = 'var(--emerald)'; g.style.borderColor = 'var(--emerald)'; }
+                else if (pct >= 50) { g.style.background = '#fef9c3'; g.style.color = 'var(--amber)'; g.style.borderColor = 'var(--amber)'; }
+                else { g.style.background = '#fef2f2'; g.style.color = 'var(--crimson)'; g.style.borderColor = 'var(--crimson)'; }
+            } else { g.innerText = '–'; g.style.background = 'var(--bg-page)'; g.style.color = 'var(--text-light)'; g.style.borderColor = 'var(--border)'; l.innerText = total + ' de 6 criterios evaluados'; }
+        }
+
+        function guardarAud() {
+            let checks = document.querySelectorAll('.aud-chk'); for (let c of checks) { if (!c.value) { alert('Evalúe todos los criterios.'); return; } }
+            let email = document.getElementById('audEmail').value.trim(); if (!email) { alert('Ingrese correo.'); return; }
+            let btn = document.getElementById('btnGuardar'); btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...'; btn.disabled = true;
+            let datos = { epp: document.getElementById('audEPP').value, higiene: document.getElementById('audHigiene').value, equipos: document.getElementById('audEquipos').value, procedimiento: document.getElementById('audProc').value, emergencia: document.getElementById('audEmerg').value, ambiental: document.getElementById('audAmb').value, observaciones: document.getElementById('audObs').value.trim(), auditorEmail: email };
+            google.script.run.withSuccessHandler(r => {
+                if (r.success) { document.getElementById('cont').innerHTML = '<div class="success-screen"><div class="icon"><i class="bi bi-clipboard-check"></i></div><h4>Auditoría Registrada</h4><p class="pt-id">' + r.idAuditoria + '</p><p class="text-muted">Cumplimiento: <strong>' + r.porcentaje + '%</strong></p></div>'; }
+                else { alert('Error: ' + r.message); btn.innerHTML = '<i class="bi bi-clipboard-check"></i> Guardar Auditoría'; btn.disabled = false; }
+            }).withFailureHandler(e => { alert('Error: ' + e.message); btn.innerHTML = '<i class="bi bi-clipboard-check"></i> Guardar Auditoría'; btn.disabled = false; }).guardarAuditoria(datos, document.getElementById('tk').value);
+        }
+    </script>
+</body>
+
+</html>

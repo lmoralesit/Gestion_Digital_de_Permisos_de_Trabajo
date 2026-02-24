@@ -1,33 +1,154 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="UTF-8"><title>Aprobación Final</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aprobación PTD</title>
+  <?!= include('Estilos') ?>
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-  <style>canvas{width:100%; height:120px; border:2px dashed #0d6efd; border-radius:8px;}</style>
 </head>
-<body class="bg-light"><div class="container mt-4" style="max-width: 800px;">
-  <div class="card shadow border-primary"><div class="card-body p-4">
-    <h4 class="text-primary border-bottom pb-2">Módulo 5: Aprobación</h4>
-    <input type="hidden" id="tk" value="<?= token ?>">
-    <div id="load" class="text-center py-4"><div class="spinner-border"></div></div>
-    <div id="cont" class="d-none">
-      <div class="alert alert-secondary" id="info"></div>
-      <label class="fw-bold text-primary mt-2">1. Firma Solicitante</label><canvas id="p1"></canvas>
-      <label class="fw-bold text-success mt-2">2. Firma Dueño Área</label><canvas id="p2"></canvas>
-      <label class="fw-bold text-danger mt-2">3. Firma Analista SSA</label><canvas id="p3"></canvas>
-      <button class="btn btn-primary btn-lg w-100 mt-4" onclick="aprobar()">Aprobar y Generar PDF</button>
+
+<body>
+  <nav class="ptd-nav">
+    <div class="container"><span class="brand"><i class="bi bi-shield-check"></i> Sistema de Permisos de Trabajo
+        (PTD)</span></div>
+  </nav>
+
+  <div class="container mb-5">
+    <div class="ptd-card">
+      <input type="hidden" id="tk" value="<?= token ?>">
+      <div id="loader" class="ptd-loader">
+        <div class="spinner-border"></div>
+        <p>Cargando permiso...</p>
+      </div>
+      <div id="cont" class="hidden">
+        <h5 class="step-header"><i class="bi bi-clipboard-check"></i>Módulo 5: Revisión y Aprobación</h5>
+
+        <!-- RESUMEN DEL PT -->
+        <div class="info-bar mb-3">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="info-label">Permiso</div>
+              <div class="info-value" id="lblPT"></div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-label">Empresa</div>
+              <div class="info-value" id="lblEmpresa"></div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-label">Localidad</div>
+              <div class="info-value" id="lblLocalidad"></div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-label">Área</div>
+              <div class="info-value" id="lblArea"></div>
+            </div>
+          </div>
+        </div>
+        <div id="resumenDetalle" class="mb-3"></div>
+
+        <!-- SECCIÓN MÉDICA -->
+        <div id="secMedica" class="hidden mb-3"></div>
+
+        <hr>
+        <h6 class="fw-bold mb-3" style="color:var(--primary)"><i class="bi bi-pen me-1"></i>Firmas de Aprobación</h6>
+
+        <div class="firma-section">
+          <label class="form-label fw-bold"><i class="bi bi-1-circle-fill me-1" style="color:var(--primary)"></i>
+            Solicitante del Servicio</label>
+          <p class="small text-muted mb-2" id="nmSolicitante"></p>
+          <canvas id="fc1" class="firma-box"></canvas>
+          <div class="text-end mt-1"><button type="button" class="btn btn-outline-back btn-sm" onclick="c1.clear()"><i
+                class="bi bi-eraser"></i> Limpiar</button></div>
+        </div>
+        <div class="firma-section">
+          <label class="form-label fw-bold"><i class="bi bi-2-circle-fill me-1" style="color:var(--emerald)"></i> Dueño
+            del Área</label>
+          <p class="small text-muted mb-2" id="nmDueno"></p>
+          <canvas id="fc2" class="firma-box"></canvas>
+          <div class="text-end mt-1"><button type="button" class="btn btn-outline-back btn-sm" onclick="c2.clear()"><i
+                class="bi bi-eraser"></i> Limpiar</button></div>
+        </div>
+        <div class="firma-section">
+          <label class="form-label fw-bold"><i class="bi bi-3-circle-fill me-1" style="color:var(--amber)"></i>
+            SSA</label>
+          <p class="small text-muted mb-2" id="nmSSA"></p>
+          <canvas id="fc3" class="firma-box"></canvas>
+          <div class="text-end mt-1"><button type="button" class="btn btn-outline-back btn-sm" onclick="c3.clear()"><i
+                class="bi bi-eraser"></i> Limpiar</button></div>
+        </div>
+
+        <button class="btn btn-ptd-success btn-lg w-100 mt-3" id="btnAprobar" onclick="aprobar()">
+          <i class="bi bi-shield-fill-check"></i> Aprobar y Activar Permiso de Trabajo
+        </button>
+      </div>
     </div>
-  </div></div>
-</div>
-<script>
-  let s1,s2,s3;
-  window.onload=()=>{
-    s1=new SignaturePad(document.getElementById('p1')); s2=new SignaturePad(document.getElementById('p2')); s3=new SignaturePad(document.getElementById('p3'));
-    google.script.run.withSuccessHandler(r=>{ document.getElementById('load').classList.add('d-none'); document.getElementById('cont').classList.remove('d-none'); document.getElementById('info').innerHTML=`<b>${r.pt}</b> - ${r.area}`; }).obtenerDatosAprobacion(document.getElementById('tk').value);
-  }
-  function aprobar(){
-    document.querySelector('.btn-primary').innerText="Generando PDF y Activando...";
-    google.script.run.withSuccessHandler(r=>document.getElementById('cont').innerHTML="<div class='alert alert-success'>Permiso Activo y PDF guardado en Drive.</div>").guardarAprobacion(document.getElementById('tk').value, s1.toDataURL(), s2.toDataURL(), s3.toDataURL());
-  }
-</script></body></html>
+  </div>
+
+  <script>
+    let c1, c2, c3;
+    window.onload = () => {
+      c1 = new SignaturePad(document.getElementById('fc1'));
+      c2 = new SignaturePad(document.getElementById('fc2'));
+      c3 = new SignaturePad(document.getElementById('fc3'));
+      google.script.run.withSuccessHandler(cargarDatos).withFailureHandler(e => {
+        document.getElementById('loader').classList.add('hidden');
+        document.getElementById('cont').classList.remove('hidden');
+        document.getElementById('cont').innerHTML = '<div class="alert alert-danger">Error: ' + e.message + '</div>';
+      }).obtenerDatosAprobacion(document.getElementById('tk').value);
+    };
+
+    function cargarDatos(r) {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('cont').classList.remove('hidden');
+      if (!r.success) { document.getElementById('cont').innerHTML = '<div class="alert alert-danger">' + r.message + '</div>'; return; }
+      document.getElementById('lblPT').innerText = r.pt;
+      document.getElementById('lblEmpresa').innerText = r.empresa || '';
+      document.getElementById('lblLocalidad').innerText = r.localidad || '';
+      document.getElementById('lblArea').innerText = r.area || '';
+      document.getElementById('nmSolicitante').innerText = r.solicitante || '';
+      document.getElementById('nmDueno').innerText = r.dueno || '';
+      document.getElementById('nmSSA').innerText = r.analista || '';
+
+      // Resumen detalle
+      let html = '<div class="riesgo-card"><div class="row g-2">';
+      html += '<div class="col-12"><div class="info-label">Descripción</div><div>' + (r.desc || '-') + '</div></div>';
+      html += '<div class="col-md-4"><div class="info-label">Alto Riesgo</div><div>' + (r.altoRiesgo || '-') + '</div></div>';
+      html += '<div class="col-md-4"><div class="info-label">Tipo</div><div>' + (r.tipo || 'N/A') + '</div></div>';
+      html += '<div class="col-md-4"><div class="info-label">Tareas</div><div>' + (r.tareas || '-') + '</div></div>';
+      html += '</div></div>';
+      document.getElementById('resumenDetalle').innerHTML = html;
+
+      // Trabajadores
+      if (r.trabajadores && r.trabajadores.length > 0) {
+        let th = '<div class="riesgo-card"><h6 class="fw-bold mb-2" style="color:var(--teal)"><i class="bi bi-people me-1"></i>Personal Ejecutante</h6><ul class="mb-0">';
+        r.trabajadores.forEach(t => th += '<li class="small">' + t.nombre + ' — C.I. ' + t.cedula + '</li>');
+        th += '</ul></div>';
+        document.getElementById('resumenDetalle').innerHTML += th;
+      }
+
+      // Resultados médicos
+      if (r.medico && r.medico.length > 0) {
+        let mh = '<h6 class="fw-bold mb-2"><i class="bi bi-heart-pulse me-1" style="color:var(--crimson)"></i>Resultados Médicos</h6>';
+        r.medico.forEach(m => {
+          let color = m.aptitud === 'Apto' ? 'var(--emerald)' : m.aptitud === 'No Apto' ? 'var(--crimson)' : 'var(--amber)';
+          mh += '<div class="riesgo-card d-flex justify-content-between align-items-center"><span>' + m.nombre + ' — TA: ' + m.tension + '</span><span class="badge" style="background:' + color + '">' + m.aptitud + '</span></div>';
+        });
+        document.getElementById('secMedica').classList.remove('hidden');
+        document.getElementById('secMedica').innerHTML = mh;
+      }
+    }
+
+    function aprobar() {
+      if (c1.isEmpty() || c2.isEmpty() || c3.isEmpty()) { alert('Se requieren las 3 firmas de aprobación.'); return; }
+      let btn = document.getElementById('btnAprobar'); btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...'; btn.disabled = true;
+      google.script.run.withSuccessHandler(r => {
+        if (r.success) { document.getElementById('cont').innerHTML = '<div class="success-screen"><div class="icon"><i class="bi bi-shield-fill-check"></i></div><h4>Permiso de Trabajo Aprobado</h4><p class="pt-id">' + r.idPT + '</p><p class="text-muted">El permiso está ACTIVO. PDF generado y enviado por correo.</p></div>'; }
+        else { alert('Error: ' + r.message); btn.innerHTML = '<i class="bi bi-shield-fill-check"></i> Aprobar y Activar Permiso de Trabajo'; btn.disabled = false; }
+      }).withFailureHandler(e => { alert('Error: ' + e.message); btn.innerHTML = '<i class="bi bi-shield-fill-check"></i> Aprobar y Activar Permiso de Trabajo'; btn.disabled = false; }).guardarAprobacion(document.getElementById('tk').value, c1.toDataURL(), c2.toDataURL(), c3.toDataURL());
+    }
+  </script>
+</body>
+
+</html>

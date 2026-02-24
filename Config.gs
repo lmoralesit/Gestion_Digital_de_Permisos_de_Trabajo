@@ -3,7 +3,7 @@ const CONFIG = {
   DOC_TEMPLATE_ID: '1FRjYXbYkMBxZu93TUMoRD4A3AW7KYpN7DZ2VAr_f5R4',
   SHEET_DB_ID: '1hbC0FYNYjRy4cUWZyjbG_rlJaXjM_Eqf-x5S3QIawmw',
   BUK_SHEET_ID: '1ZQkiBPUVdOWV8PlSeWDu9Lc6Jr424fhE99yVDHT0ax0',
-  EMAIL_PRUEBA: 'lmorales@alfonzorivas.com' // Aquí llegarán las notificaciones para probar
+  EMAIL_PRUEBA: 'lmorales@alfonzorivas.com'
 };
 
 function conectarDB() { return SpreadsheetApp.openById(CONFIG.SHEET_DB_ID); }
@@ -11,11 +11,41 @@ function conectarDB() { return SpreadsheetApp.openById(CONFIG.SHEET_DB_ID); }
 function configurarBaseDeDatos() {
   const ss = conectarDB();
   const estructuraDB = {
-    'PT_Maestro': ['ID_PT', 'Fecha_Creacion', 'Estatus_PT', 'Correo_Solicitante', 'Nombre_Empresa', 'Analista_SST', 'Cedula_Analista', 'Unidad_Negocio', 'Localidad', 'Sede', 'Area_Equipo', 'URL_Foto_Area', 'Solicitante_Interno', 'Depto_Solicitante', 'Proceso_Solicitante', 'Dueno_Area', 'Depto_Dueno', 'Proceso_Dueno', 'Descripcion_Actividad', 'Es_Alto_Riesgo', 'Tipo_Trabajo_AR', 'Tareas_Principales', 'Equipos_Herramientas', 'O2', 'LEL', 'CO', 'H2S', 'Firma_Analista_SST', 'Firma_Solicitante', 'Firma_Dueno', 'Firma_SSA', 'Fecha_Aprobacion_Final', 'URL_PDF', 'Estatus_Cierre', 'Firma_Cierre_Contratista', 'Firma_Cierre_Solicitante', 'Firma_Cierre_SSA', 'Fecha_Cierre', 'Token_Medico', 'Token_Aprobacion'],
-    'PT_Trabajadores': ['ID_Trabajador', 'ID_PT', 'Nombre_Trabajador', 'Cedula', 'Cargo', 'Firma_Trabajador', 'Tension_Arterial', 'Frecuencia_Cardiaca', 'Aptitud_Medica', 'Observaciones_Medicas', 'Validado_Por_Medico', 'Fecha_Validacion'],
-    'PT_Riesgos': ['ID_Riesgo', 'ID_PT', 'Peligro_Identificado', 'Severidad', 'Probabilidad', 'Riesgo_Inherente', 'Jerarquia_Control', 'Controles_Aplicados', 'Riesgo_Residual'],
-    'PT_Auditoria': ['ID_Auditoria', 'ID_PT', 'Fecha_Auditoria', 'Auditor_SSA', 'Uso_EPP', 'Higiene_Industrial', 'Equipos_Herramientas', 'Ejecucion_Procedimiento', 'Controles_Emergencia', 'Gestion_Ambiental', 'Observaciones', 'Porcentaje_Cumplimiento'],
-    'Config_Listas': ['Empresa_Contratista', 'Unidad_Negocio', 'Localidad', 'Mapeo_Sedes', 'Tipo_Trabajo_AR', 'Peligros', 'Severidad', 'Probabilidad', 'Jerarquia']
+    'PT_Maestro': [
+      'ID_PT', 'Fecha_Creacion', 'Estatus_PT', 'Correo_Solicitante',
+      'Nombre_Empresa', 'Analista_SST', 'Cedula_Analista',
+      'Unidad_Negocio', 'Localidad', 'Sede', 'Area_Equipo', 'URL_Foto_Area',
+      'Solicitante_Interno', 'Depto_Solicitante', 'Proceso_Solicitante',
+      'Dueno_Area', 'Depto_Dueno', 'Proceso_Dueno',
+      'Descripcion_Actividad', 'Es_Alto_Riesgo', 'Tipo_Trabajo_AR',
+      'Tareas_Principales', 'Equipos_Herramientas',
+      'O2', 'LEL', 'CO', 'H2S',
+      'Firma_Analista_SST', 'Firma_Solicitante', 'Firma_Dueno', 'Firma_SSA',
+      'Fecha_Aprobacion_Final', 'URL_PDF',
+      'Estatus_Cierre', 'Firma_Cierre_Contratista', 'Firma_Cierre_Solicitante',
+      'Firma_Cierre_SSA', 'Fecha_Cierre',
+      'Token_Medico', 'Token_Aprobacion', 'Token_Auditoria', 'Token_Cierre'
+    ],
+    'PT_Trabajadores': [
+      'ID_Trabajador', 'ID_PT', 'Nombre_Trabajador', 'Cedula', 'Cargo',
+      'Firma_Trabajador', 'Tension_Arterial', 'Frecuencia_Cardiaca',
+      'Aptitud_Medica', 'Observaciones_Medicas', 'Validado_Por_Medico', 'Fecha_Validacion'
+    ],
+    'PT_Riesgos': [
+      'ID_Riesgo', 'ID_PT', 'Peligro_Identificado', 'Severidad',
+      'Probabilidad', 'Riesgo_Inherente', 'Jerarquia_Control',
+      'Controles_Aplicados', 'Riesgo_Residual'
+    ],
+    'PT_Auditoria': [
+      'ID_Auditoria', 'ID_PT', 'Fecha_Auditoria', 'Auditor_SSA',
+      'Uso_EPP', 'Higiene_Industrial', 'Equipos_Herramientas',
+      'Ejecucion_Procedimiento', 'Controles_Emergencia', 'Gestion_Ambiental',
+      'Observaciones', 'Porcentaje_Cumplimiento'
+    ],
+    'Config_Listas': [
+      'Empresa_Contratista', 'Unidad_Negocio', 'Localidad', 'Mapeo_Sedes',
+      'Tipo_Trabajo_AR', 'Peligros', 'Severidad', 'Probabilidad', 'Jerarquia'
+    ]
   };
 
   const datosListas = [

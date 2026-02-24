@@ -1,0 +1,435 @@
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+    :root {
+        --bg-page: #f1f5f9;
+        --bg-surface: #ffffff;
+        --nav-from: #0c1929;
+        --nav-to: #1a365d;
+        --primary: #1d4ed8;
+        --primary-light: #3b82f6;
+        --teal: #0d9488;
+        --teal-light: #14b8a6;
+        --emerald: #059669;
+        --amber: #d97706;
+        --crimson: #dc2626;
+        --text-dark: #0f172a;
+        --text-mid: #475569;
+        --text-light: #94a3b8;
+        --border: #e2e8f0;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, .06);
+        --shadow: 0 4px 12px rgba(0, 0, 0, .07);
+        --shadow-lg: 0 10px 24px rgba(0, 0, 0, .1);
+        --radius: 14px;
+        --radius-sm: 8px;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        background: var(--bg-page);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--text-dark);
+        margin: 0;
+    }
+
+    /* ===== NAVBAR ===== */
+    .ptd-nav {
+        background: linear-gradient(135deg, var(--nav-from), var(--nav-to));
+        padding: 14px 0;
+        box-shadow: 0 2px 16px rgba(0, 0, 0, .2);
+    }
+
+    .ptd-nav .brand {
+        color: #fff;
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: .3px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .ptd-nav .brand i {
+        font-size: 22px;
+        color: var(--teal-light);
+    }
+
+    /* ===== CARDS ===== */
+    .ptd-card {
+        background: var(--bg-surface);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        padding: 32px;
+        max-width: 940px;
+        margin: 28px auto;
+    }
+
+    @media(max-width:768px) {
+        .ptd-card {
+            padding: 20px 16px;
+            margin: 16px;
+        }
+    }
+
+    /* ===== STEP HEADER ===== */
+    .step-header {
+        color: var(--nav-from);
+        font-weight: 700;
+        font-size: 18px;
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 14px;
+        margin-bottom: 28px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .step-header i {
+        color: var(--teal);
+        font-size: 20px;
+    }
+
+    /* ===== FORM ELEMENTS ===== */
+    .form-label {
+        font-weight: 500;
+        font-size: 13px;
+        color: var(--text-mid);
+        margin-bottom: 4px;
+    }
+
+    .form-control,
+    .form-select {
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 14px;
+        padding: 8px 12px;
+        transition: border-color .2s, box-shadow .2s;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+    }
+
+    .form-control[readonly] {
+        background: #f8fafc;
+        color: var(--text-mid);
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn-ptd {
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 14px;
+        padding: 10px 28px;
+        transition: transform .15s, box-shadow .2s;
+    }
+
+    .btn-ptd:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(29, 78, 216, .3);
+        color: #fff;
+    }
+
+    .btn-ptd:disabled {
+        opacity: .65;
+        transform: none;
+    }
+
+    .btn-ptd-success {
+        background: linear-gradient(135deg, var(--emerald), #10b981);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 14px;
+        padding: 10px 28px;
+        transition: transform .15s, box-shadow .2s;
+    }
+
+    .btn-ptd-success:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(5, 150, 105, .3);
+        color: #fff;
+    }
+
+    .btn-ptd-danger {
+        background: linear-gradient(135deg, var(--crimson), #ef4444);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 14px;
+        padding: 10px 28px;
+        transition: transform .15s, box-shadow .2s;
+    }
+
+    .btn-ptd-danger:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(220, 38, 38, .3);
+        color: #fff;
+    }
+
+    .btn-ptd-warning {
+        background: linear-gradient(135deg, var(--amber), #f59e0b);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 14px;
+        padding: 10px 28px;
+        transition: transform .15s, box-shadow .2s;
+    }
+
+    .btn-ptd-warning:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(217, 119, 6, .3);
+        color: #fff;
+    }
+
+    .btn-outline-back {
+        border: 1.5px solid var(--border);
+        color: var(--text-mid);
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+        font-size: 14px;
+        padding: 10px 20px;
+        background: transparent;
+        transition: all .2s;
+    }
+
+    .btn-outline-back:hover {
+        background: #f8fafc;
+        border-color: var(--text-light);
+    }
+
+    /* ===== PROGRESS STEPS ===== */
+    .progress-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 36px;
+        position: relative;
+        padding: 0 4%;
+    }
+
+    .progress-steps::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 12%;
+        right: 12%;
+        height: 2px;
+        background: var(--border);
+        z-index: 0;
+    }
+
+    .step-dot {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--border);
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+        z-index: 1;
+        transition: all .3s ease;
+    }
+
+    .step-dot.active {
+        background: var(--primary);
+        color: #fff;
+        transform: scale(1.12);
+        box-shadow: 0 0 0 4px rgba(29, 78, 216, .15);
+    }
+
+    .step-dot.done {
+        background: var(--emerald);
+        color: #fff;
+    }
+
+    .step-label {
+        font-size: 11px;
+        color: var(--text-light);
+        text-align: center;
+        margin-top: 6px;
+        font-weight: 500;
+        max-width: 72px;
+    }
+
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* ===== SIGNATURE PAD ===== */
+    canvas.firma-box {
+        width: 100%;
+        height: 160px;
+        border: 2px dashed var(--teal);
+        border-radius: var(--radius-sm);
+        background: #fafcfe;
+        cursor: crosshair;
+    }
+
+    /* ===== DYNAMIC TABLES ===== */
+    .tabla-din th {
+        background: var(--nav-from);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        padding: 10px 12px;
+    }
+
+    .tabla-din td {
+        vertical-align: middle;
+        padding: 6px 8px;
+    }
+
+    .tabla-din input,
+    .tabla-din select {
+        font-size: 13px;
+    }
+
+    /* ===== RIESGO CARD ===== */
+    .riesgo-card {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 18px;
+        margin-bottom: 14px;
+        transition: box-shadow .2s;
+    }
+
+    .riesgo-card:hover {
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* ===== FIRMA SECTION ===== */
+    .firma-section {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 18px;
+        margin-bottom: 14px;
+    }
+
+    /* ===== INFO BAR ===== */
+    .info-bar {
+        background: linear-gradient(135deg, #f0f9ff, #ecfdf5);
+        border: 1px solid #d1e7dd;
+        border-radius: var(--radius-sm);
+        padding: 16px 20px;
+    }
+
+    .info-label {
+        font-size: 11px;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .info-value {
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--text-dark);
+    }
+
+    /* ===== GASES ZONE ===== */
+    .zona-gases {
+        background: linear-gradient(135deg, #fffbeb, #fef3c7);
+        border: 1px solid #fcd34d;
+        border-radius: var(--radius-sm);
+        padding: 18px;
+    }
+
+    /* ===== AUDIT CHECK ITEM ===== */
+    .check-item {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 14px 18px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all .15s;
+    }
+
+    .check-item:hover {
+        background: #f1f5f9;
+        border-color: var(--teal);
+    }
+
+    /* ===== FOTO PREVIEW ===== */
+    .foto-preview {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: var(--radius-sm);
+        margin-top: 8px;
+        display: none;
+        border: 2px solid var(--border);
+    }
+
+    /* ===== LOADER ===== */
+    .ptd-loader {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .ptd-loader .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        color: var(--teal);
+    }
+
+    .ptd-loader p {
+        color: var(--text-light);
+        margin-top: 16px;
+        font-size: 14px;
+    }
+
+    /* ===== SUCCESS SCREEN ===== */
+    .success-screen {
+        text-align: center;
+        padding: 48px 20px;
+    }
+
+    .success-screen .icon {
+        font-size: 72px;
+        color: var(--emerald);
+    }
+
+    .success-screen h4 {
+        color: var(--emerald);
+        margin-top: 16px;
+        font-weight: 700;
+    }
+
+    .success-screen .pt-id {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--text-dark);
+        margin: 8px 0;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+</style>

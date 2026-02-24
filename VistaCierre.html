@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cierre PTD</title>
+    <?!= include('Estilos') ?>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <style>
+        .audit-badge {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 13px
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="ptd-nav">
+        <div class="container"><span class="brand"><i class="bi bi-shield-check"></i> Sistema de Permisos de Trabajo
+                (PTD)</span></div>
+    </nav>
+
+    <div class="container mb-5">
+        <div class="ptd-card">
+            <input type="hidden" id="tk" value="<?= token ?>">
+            <div id="loader" class="ptd-loader">
+                <div class="spinner-border"></div>
+                <p>Cargando datos del permiso...</p>
+            </div>
+            <div id="cont" class="hidden">
+                <h5 class="step-header"><i class="bi bi-door-closed-fill"></i>Módulo 7: Cierre del Permiso</h5>
+
+                <div class="info-bar mb-3">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="info-label">Permiso</div>
+                            <div class="info-value" id="lblPT"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">Empresa</div>
+                            <div class="info-value" id="lblEmpresa"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">Área</div>
+                            <div class="info-value" id="lblArea"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">Inicio</div>
+                            <div class="info-value small" id="lblInicio"></div>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <div class="info-label">Descripción</div>
+                            <div class="small" id="lblDesc"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">Estatus</div><span class="badge" style="background:var(--emerald)"
+                                id="lblEstatus"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="secAud" class="hidden mb-3">
+                    <h6 class="fw-bold"><i class="bi bi-clipboard-data me-1" style="color:var(--amber)"></i>Resultado de
+                        Auditorías</h6>
+                    <div id="listaAud"></div>
+                </div>
+
+                <hr>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold" style="color:var(--crimson)"><i
+                            class="bi bi-flag me-1"></i>Estatus del Trabajo <span class="text-danger">*</span></label>
+                    <select id="estCierre" class="form-select form-select-lg" title="Estatus de cierre" required>
+                        <option value="">-- Seleccione --</option>
+                        <option value="Culminado">✅ Culminado</option>
+                        <option value="Suspendido">⏸️ Suspendido</option>
+                        <option value="Extendido">🔄 Extendido</option>
+                    </select>
+                </div>
+
+                <h6 class="fw-bold mb-3" style="color:var(--primary)"><i class="bi bi-pen me-1"></i>Firmas de Cierre
+                </h6>
+
+                <div class="firma-section">
+                    <label class="form-label fw-bold"><i class="bi bi-1-circle-fill me-1"
+                            style="color:var(--primary)"></i> Cierre Contratista</label>
+                    <p class="small text-muted mb-2">Validación de retiro y limpieza del área</p>
+                    <canvas id="fc1" class="firma-box"></canvas>
+                    <div class="text-end mt-1"><button type="button" class="btn btn-outline-back btn-sm"
+                            onclick="c1.clear()"><i class="bi bi-eraser"></i> Limpiar</button></div>
+                </div>
+                <div class="firma-section">
+                    <label class="form-label fw-bold"><i class="bi bi-2-circle-fill me-1"
+                            style="color:var(--emerald)"></i> Cierre Solicitante</label>
+                    <p class="small text-muted mb-2">Recepción del trabajo/área</p>
+                    <canvas id="fc2" class="firma-box"></canvas>
+                    <div class="text-end mt-1"><button type="button" class="btn btn-outline-back btn-sm"
+                            onclick="c2.clear()"><i class="bi bi-eraser"></i> Limpiar</button></div>
+                </div>
+                <div class="firma-section">
+                    <label class="form-label fw-bold"><i class="bi bi-3-circle-fill me-1"
+                            style="color:var(--amber)"></i> Cierre SSA</label>
+                    <p class="small text-muted mb-2">Cierre administrativo del permiso</p>
+                    <canvas id="fc3" class="firma-box"></canvas>
+                    <div class="text-end mt-1"><button type="button" class="btn btn-outline-back btn-sm"
+                            onclick="c3.clear()"><i class="bi bi-eraser"></i> Limpiar</button></div>
+                </div>
+
+                <button class="btn btn-ptd-danger btn-lg w-100 mt-3" id="btnCerrar" onclick="cerrar()">
+                    <i class="bi bi-door-closed"></i> Cerrar Permiso de Trabajo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let c1, c2, c3;
+        window.onload = () => {
+            c1 = new SignaturePad(document.getElementById('fc1'));
+            c2 = new SignaturePad(document.getElementById('fc2'));
+            c3 = new SignaturePad(document.getElementById('fc3'));
+            google.script.run.withSuccessHandler(cargar).withFailureHandler(e => {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('cont').classList.remove('hidden');
+                document.getElementById('cont').innerHTML = '<div class="alert alert-danger">Error: ' + e.message + '</div>';
+            }).obtenerDatosCierre(document.getElementById('tk').value);
+        };
+
+        function cargar(r) {
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('cont').classList.remove('hidden');
+            if (!r.success) { document.getElementById('cont').innerHTML = '<div class="alert alert-danger">' + r.message + '</div>'; return; }
+            document.getElementById('lblPT').innerText = r.pt;
+            document.getElementById('lblEmpresa').innerText = r.empresa || '-';
+            document.getElementById('lblArea').innerText = r.area || '-';
+            document.getElementById('lblDesc').innerText = r.desc || '-';
+            document.getElementById('lblEstatus').innerText = r.estatus;
+            document.getElementById('lblInicio').innerText = r.fechaInicio ? new Date(r.fechaInicio).toLocaleString('es-VE') : '-';
+            if (r.auditorias && r.auditorias.length > 0) {
+                document.getElementById('secAud').classList.remove('hidden');
+                let h = ''; r.auditorias.forEach((a, i) => {
+                    let pct = parseFloat(a.porcentaje) || 0;
+                    let cl = pct >= 80 ? 'background:var(--emerald);color:#fff' : pct >= 50 ? 'background:var(--amber);color:#fff' : 'background:var(--crimson);color:#fff';
+                    h += '<div class="riesgo-card d-flex justify-content-between align-items-center py-2 mb-1"><span class="small fw-semibold">Auditoría ' + (i + 1) + (a.fecha ? ' — ' + new Date(a.fecha).toLocaleString('es-VE') : '') + '</span><span class="audit-badge" style="' + cl + '">' + pct + '%</span></div>';
+                });
+                document.getElementById('listaAud').innerHTML = h;
+            }
+        }
+
+        function cerrar() {
+            if (!document.getElementById('estCierre').value) { alert('Seleccione el estatus del trabajo.'); return; }
+            if (c1.isEmpty() || c2.isEmpty() || c3.isEmpty()) { alert('Se requieren las 3 firmas.'); return; }
+            let btn = document.getElementById('btnCerrar'); btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Cerrando...'; btn.disabled = true;
+            let datos = { estatusCierre: document.getElementById('estCierre').value, firmaContratista: c1.toDataURL(), firmaSolicitante: c2.toDataURL(), firmaSSA: c3.toDataURL() };
+            google.script.run.withSuccessHandler(r => {
+                if (r.success) { document.getElementById('cont').innerHTML = '<div class="success-screen"><div class="icon"><i class="bi bi-check-circle-fill"></i></div><h4>Permiso Cerrado Exitosamente</h4><p class="pt-id">' + r.idPT + '</p><p class="text-muted">Estatus: <strong>' + datos.estatusCierre + '</strong></p><p class="small text-muted">Fecha y hora de cierre registradas. PDF final regenerado.</p></div>'; }
+                else { alert('Error: ' + (r.message || '')); btn.innerHTML = '<i class="bi bi-door-closed"></i> Cerrar Permiso de Trabajo'; btn.disabled = false; }
+            }).withFailureHandler(e => { alert('Error: ' + e.message); btn.innerHTML = '<i class="bi bi-door-closed"></i> Cerrar Permiso de Trabajo'; btn.disabled = false; }).guardarCierre(datos, document.getElementById('tk').value);
+        }
+    </script>
+</body>
+
+</html>
