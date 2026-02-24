@@ -23,9 +23,8 @@
         <p>Cargando permiso...</p>
       </div>
       <div id="cont" class="hidden">
-        <h5 class="step-header"><i class="bi bi-clipboard-check"></i>Módulo 5: Revisión y Aprobación</h5>
+        <h5 class="step-header"><i class="bi bi-clipboard-check"></i> Módulo 5: Revisión y Aprobación</h5>
 
-        <!-- RESUMEN DEL PT -->
         <div class="info-bar mb-3">
           <div class="row">
             <div class="col-md-3">
@@ -47,8 +46,6 @@
           </div>
         </div>
         <div id="resumenDetalle" class="mb-3"></div>
-
-        <!-- SECCIÓN MÉDICA -->
         <div id="secMedica" class="hidden mb-3"></div>
 
         <hr>
@@ -111,7 +108,6 @@
       document.getElementById('nmDueno').innerText = r.dueno || '';
       document.getElementById('nmSSA').innerText = r.analista || '';
 
-      // Resumen detalle
       let html = '<div class="riesgo-card"><div class="row g-2">';
       html += '<div class="col-12"><div class="info-label">Descripción</div><div>' + (r.desc || '-') + '</div></div>';
       html += '<div class="col-md-4"><div class="info-label">Alto Riesgo</div><div>' + (r.altoRiesgo || '-') + '</div></div>';
@@ -120,7 +116,6 @@
       html += '</div></div>';
       document.getElementById('resumenDetalle').innerHTML = html;
 
-      // Trabajadores
       if (r.trabajadores && r.trabajadores.length > 0) {
         let th = '<div class="riesgo-card"><h6 class="fw-bold mb-2" style="color:var(--teal)"><i class="bi bi-people me-1"></i>Personal Ejecutante</h6><ul class="mb-0">';
         r.trabajadores.forEach(t => th += '<li class="small">' + t.nombre + ' — C.I. ' + t.cedula + '</li>');
@@ -128,7 +123,6 @@
         document.getElementById('resumenDetalle').innerHTML += th;
       }
 
-      // Resultados médicos
       if (r.medico && r.medico.length > 0) {
         let mh = '<h6 class="fw-bold mb-2"><i class="bi bi-heart-pulse me-1" style="color:var(--crimson)"></i>Resultados Médicos</h6>';
         r.medico.forEach(m => {

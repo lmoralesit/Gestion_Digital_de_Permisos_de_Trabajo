@@ -22,7 +22,7 @@
         <p>Cargando datos médicos...</p>
       </div>
       <div id="cont" class="hidden">
-        <h5 class="step-header"><i class="bi bi-heart-pulse"></i>Módulo 4: Validación Médica</h5>
+        <h5 class="step-header"><i class="bi bi-heart-pulse"></i> Módulo 4: Validación Médica</h5>
 
         <div class="info-bar mb-4">
           <div class="row">
@@ -76,18 +76,7 @@
       trabajadoresData = r.trabajadores;
       let html = '';
       r.trabajadores.forEach((t, idx) => {
-        html += `<div class="firma-section">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="fw-bold" style="color:var(--primary)"><i class="bi bi-person-fill me-1"></i>${t.nombre}</span>
-        <span class="badge" style="background:var(--nav-from)">C.I. ${t.cedula}</span>
-      </div>
-      <div class="row g-2">
-        <div class="col-md-4"><label class="form-label small">Tensión Arterial <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm med-ta" id="ta${idx}" placeholder="120/80" required></div>
-        <div class="col-md-4"><label class="form-label small">Frec. Cardíaca</label><input type="number" class="form-control form-control-sm med-fc" id="fc${idx}" placeholder="70"></div>
-        <div class="col-md-4"><label class="form-label small">Aptitud <span class="text-danger">*</span></label><select class="form-select form-select-sm med-apt" id="apt${idx}" title="Aptitud médica"><option value="">-- --</option><option value="Apto">✅ Apto</option><option value="No Apto">❌ No Apto</option><option value="Apto con Restricción">⚠️ Apto con Restricción</option></select></div>
-        <div class="col-12"><label class="form-label small">Observaciones</label><input type="text" class="form-control form-control-sm med-obs" id="obs${idx}" placeholder="Notas adicionales..."></div>
-      </div>
-    </div>`;
+        html += '<div class="firma-section"><div class="d-flex justify-content-between align-items-center mb-2"><span class="fw-bold" style="color:var(--primary)"><i class="bi bi-person-fill me-1"></i>' + t.nombre + '</span><span class="badge" style="background:var(--nav-from)">C.I. ' + t.cedula + '</span></div><div class="row g-2"><div class="col-md-4"><label class="form-label small">Tensión Arterial <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm" id="ta' + idx + '" placeholder="120/80" required></div><div class="col-md-4"><label class="form-label small">Frec. Cardíaca</label><input type="number" class="form-control form-control-sm" id="fc' + idx + '" placeholder="70"></div><div class="col-md-4"><label class="form-label small">Aptitud <span class="text-danger">*</span></label><select class="form-select form-select-sm" id="apt' + idx + '" title="Aptitud médica"><option value="">-- --</option><option value="Apto">✅ Apto</option><option value="No Apto">❌ No Apto</option><option value="Apto con Restricción">⚠️ Apto con Restricción</option></select></div><div class="col-12"><label class="form-label small">Observaciones</label><input type="text" class="form-control form-control-sm" id="obs' + idx + '" placeholder="Notas adicionales..."></div></div></div>';
       });
       document.getElementById('listaTrabajadores').innerHTML = html;
     }
