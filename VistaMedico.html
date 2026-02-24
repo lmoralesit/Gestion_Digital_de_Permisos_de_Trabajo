@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Validación Médica PTD</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+  <div class="container mt-5" style="max-width: 800px;">
+    <div class="card shadow-sm border-top border-success border-4">
+      <div class="card-body p-4">
+        <h4 class="text-success mb-4">Módulo 4: Servicio Médico</h4>
+        
+        <input type="hidden" id="token" value="<?= token ?>">
+        
+        <div id="loader" class="text-center py-4"><div class="spinner-border text-success"></div><p>Buscando datos del permiso...</p></div>
+        
+        <div id="contenido" class="d-none">
+          <div class="alert alert-info">
+            <strong>Permiso: </strong> <span id="lblId"></span><br>
+            <strong>Empresa: </strong> <span id="lblEmpresa"></span>
+          </div>
+
+          <p class="text-muted">Por favor, evalúe a los siguientes trabajadores para actividades de Alto Riesgo.</p>
+
+          <table class="table table-bordered mt-3" id="tbMedica">
+            <thead class="table-success">
+              <tr><th>Trabajador</th><th>Tensión (Ej. 120/80)</th><th>F. Cardíaca</th><th>Aptitud</th><th>Observaciones</th></tr>
+            </thead>
+            <tbody id="bdMedica"></tbody>
+          </table>
+
+          <div class="mt-4 text-end">
+            <button class="btn btn-success" onclick="guardarMedica()" id="btnGuardar">Validar y Firmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let filasDB = [];
+
+    window.onload = function() {
+      let token = document.getElementById('token').value;
+      google.script.run.withSuccessHandler(cargarDatos).obtenerDatosPorTokenMedico(token);
+    };
+
+    function cargarDatos(res) {
+      document.getElementById('loader').classList.add('d-none');
+      if(!res.success) {
+        document.getElementById('contenido').innerHTML = `<div class='alert alert-danger'>${res.message}</div>`;
+        document.getElementById('contenido').classList.remove('d-none');
+        return;
+      }
+
+      document.getElementById('lblId').innerText = res.pt.id;
+      document.getElementById('lblEmpresa').innerText = res.pt.empresa;
+      
+      let tbody = document.getElementById('bdMedica');
+      res.trabajadores.forEach(t => {
+        filasDB.push(t.filaIndex);
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr>
+            <td class="small fw-bold">${t.nombre} <br><span class="text-muted fw-normal">${t.cedula}</span></td>
+            <td><input type="text" class="form-control form-control-sm i-ten" placeholder="120/80"></td>
+            <td><input type="number" class="form-control form-control-sm i-fc" placeholder="Lpm"></td>
+            <td><select class="form-select form-select-sm i-apt"><option>Apto</option><option>Apto con Restricción</option><option>No Apto</option></select></td>
+            <td><input type="text" class="form-control form-control-sm i-obs"></td>
+          </tr>
+        `);
+      });
+      document.getElementById('contenido').classList.remove('d-none');
+    }
+
+    function guardarMedica() {
+      let btn = document.getElementById('btnGuardar');
+      btn.innerText = "Guardando..."; btn.disabled = true;
+
+      let emailMedico = prompt("Para firmar legalmente, por favor escriba su correo electrónico corporativo:");
+      if(!emailMedico) { btn.innerText = "Validar y Firmar"; btn.disabled = false; return; }
+
+      let trs = document.getElementById('bdMedica').rows;
+      let evaluaciones = [];
+      
+      for(let i=0; i<trs.length; i++) {
+        evaluaciones.push({
+          fila: filasDB[i],
+          tension: trs[i].querySelector('.i-ten').value,
+          fc: trs[i].querySelector('.i-fc').value,
+          aptitud: trs[i].querySelector('.i-apt').value,
+          observacion: trs[i].querySelector('.i-obs').value
+        });
+      }
+
+      let token = document.getElementById('token').value;
+      google.script.run.withSuccessHandler(function(res) {
+        document.getElementById('contenido').innerHTML = "<div class='alert alert-success'>✅ Evaluación médica guardada. El Permiso de Trabajo avanza al flujo de aprobaciones de SSA.</div>";
+      }).guardarEvaluacionMedica(evaluaciones, token, emailMedico);
+    }
+  </script>
+</body>
+</html>
