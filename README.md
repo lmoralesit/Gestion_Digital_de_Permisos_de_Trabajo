@@ -1,1 +1,1 @@
-# Gesti-n-Digital-de-Permisos-de-Trabajo
+# Gestion_Digital_de_Permisos_de_Trabajo
