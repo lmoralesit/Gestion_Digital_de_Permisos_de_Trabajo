@@ -33,6 +33,57 @@ function obtenerColaboradoresBuk() {
   return colab;
 }
 
+// ===================== ROLES Y CORREOS =====================
+
+function getCorreoActual() {
+  return Session.getActiveUser().getEmail() || '';
+}
+
+function obtenerCorreoRol(rol) {
+  const data = conectarDB().getSheetByName('Config_Roles').getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === rol) return data[i][2];
+  }
+  return CONFIG.EMAIL_PRUEBA; // Fallback
+}
+
+function extraerCorreoDeString(texto, rolDefault) {
+  if (!texto) return obtenerCorreoRol(rolDefault) || CONFIG.EMAIL_PRUEBA;
+  if (texto.includes('(')) {
+    return texto.split('(')[1].replace(')', '').trim();
+  }
+  return obtenerCorreoRol(rolDefault) || CONFIG.EMAIL_PRUEBA;
+}
+
+// ===================== BANCO DE FIRMAS =====================
+
+function obtenerFirmaGuardada(correo) {
+  if(!correo) return null;
+  const data = conectarDB().getSheetByName('Banco_Firmas').getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === correo.toLowerCase()) {
+      return data[i][2]; // Firma_Base64
+    }
+  }
+  return null;
+}
+
+function guardarFirmaBanco(correo, nombre, firmaBase64) {
+  if(!correo || !firmaBase64) return false;
+  const hBanco = conectarDB().getSheetByName('Banco_Firmas');
+  const data = hBanco.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === correo.toLowerCase()) {
+      hBanco.getRange(i + 1, 3).setValue(firmaBase64); // Actualizar firma
+      hBanco.getRange(i + 1, 4).setValue(new Date());  // Actualizar fecha
+      return true;
+    }
+  }
+  // Si no existe, agregar fila
+  hBanco.appendRow([correo.toLowerCase(), nombre || 'N/A', firmaBase64, new Date()]);
+  return true;
+}
+
 // ===================== CREAR NUEVO PERMISO (Módulos 1-3) =====================
 
 function guardarNuevoPT(datos) {
@@ -110,13 +161,14 @@ function guardarNuevoPT(datos) {
     // Enviar notificación
     let urlBase = ScriptApp.getService().getUrl();
     if(requiereMedico) {
-      enviarCorreoNotificacion(CONFIG.EMAIL_PRUEBA, idPT,
+      enviarCorreoNotificacion(obtenerCorreoRol('Medico') || CONFIG.EMAIL_PRUEBA, idPT,
         "Evaluación Médica Requerida",
         "Se ha registrado un trabajo de Alto Riesgo. Requiere validación médica antes de su aprobación.",
         `${urlBase}?vista=medico&token=${tokenMedico}`, "Ir a Módulo Médico"
       );
     } else {
-      enviarCorreoNotificacion(CONFIG.EMAIL_PRUEBA, idPT,
+      let correoSol = extraerCorreoDeString(datos.solicitanteInterno, 'Solicitante');
+      enviarCorreoNotificacion(correoSol, idPT,
         "Aprobación de PT Requerida",
         "Un nuevo Permiso de Trabajo ha sido solicitado y requiere las firmas de los Validadores.",
         `${urlBase}?vista=aprobacion&token=${tokenAprobacion}`, "Ir a Firmar"
@@ -191,7 +243,10 @@ function guardarEvaluacionMedica(evaluaciones, token, emailMedico) {
       hM.getRange(i+1, 39).setValue(''); // limpiar token médico
       hM.getRange(i+1, 40).setValue(newToken); // token aprobación
       let idPT = data[i][0];
-      enviarCorreoNotificacion(CONFIG.EMAIL_PRUEBA, idPT,
+      
+      let correoSol = extraerCorreoDeString(data[i][12], 'Solicitante');
+      
+      enviarCorreoNotificacion(correoSol, idPT,
         "Aprobación Final de PT",
         "El Servicio Médico ha validado a los trabajadores. El permiso requiere sus firmas finales.",
         `${ScriptApp.getService().getUrl()}?vista=aprobacion&token=${newToken}`, "Ir a Firmar"
@@ -202,14 +257,24 @@ function guardarEvaluacionMedica(evaluaciones, token, emailMedico) {
   return true;
 }
 
-// ===================== MÓDULO 5: APROBACIÓN =====================
+// ===================== MÓDULO 5: APROBACIÓN SECUENCIAL =====================
 
 function obtenerDatosAprobacion(token) {
   const ss = conectarDB();
   const data = ss.getSheetByName('PT_Maestro').getDataRange().getValues();
   for(let i = 1; i < data.length; i++) {
     if(data[i][39] === token) {
-      // Obtener trabajadores para mostrar resumen
+      // Determinar qué actor le toca en base al estado de las firmas
+      let fSol = data[i][28];
+      let fDueno = data[i][29];
+      let fSSA = data[i][30];
+      
+      let etapa = '';
+      if(!fSol) etapa = 'Solicitante';
+      else if(!fDueno) etapa = 'Dueno';
+      else if(!fSSA) etapa = 'SSA';
+      else return { success: false, message: "Este permiso ya fue aprobado por todos los actores." };
+
       let trab = [];
       const dataTrab = ss.getSheetByName('PT_Trabajadores').getDataRange().getValues();
       for(let j = 1; j < dataTrab.length; j++) {
@@ -219,6 +284,7 @@ function obtenerDatosAprobacion(token) {
       }
       return {
         success: true,
+        etapa: etapa, // Informar al frontend quién debe firmar
         pt: data[i][0],
         empresa: data[i][4],
         localidad: data[i][8],
@@ -229,59 +295,81 @@ function obtenerDatosAprobacion(token) {
         tipoRiesgo: data[i][20],
         tareas: data[i][21],
         equipos: data[i][22],
-        solicitanteInterno: data[i][12],
-        duenoArea: data[i][15],
+        solicitanteNom: data[i][12], // Nombre
+        solicitanteDoc: data[i][11] || '', // Correo (Nota: columna 12 es nombre, pero correo lo guardamos en otra parte ahora. Ajustaremos según Data.gs)
+        duenoNom: data[i][15],
+        duenoDoc: data[i][14] || '',
+        ssaDoc: data[i][5] || '', // Correo del analista inicial
         trabajadores: trab
       };
     }
   }
-  return { success: false, message: "Token inválido" };
+  return { success: false, message: "Token inválido o ya utilizado." };
 }
 
-function guardarAprobacion(token, fSol, fDueno, fSSA) {
+function guardarAprobacionSecuencial(tokenActual, firmaBase64) {
   const ss = conectarDB();
   const hM = ss.getSheetByName('PT_Maestro');
   const data = hM.getDataRange().getValues();
   for(let i = 1; i < data.length; i++){
-    if(data[i][39] === token){
+    if(data[i][39] === tokenActual){
       let fila = i + 1;
-      hM.getRange(fila, 29).setValue(fSol);     // Firma Solicitante
-      hM.getRange(fila, 30).setValue(fDueno);    // Firma Dueño
-      hM.getRange(fila, 31).setValue(fSSA);      // Firma SSA
-      hM.getRange(fila, 32).setValue(new Date()); // Fecha Aprobación
-      hM.getRange(fila, 3).setValue('Permiso Activo');
-      hM.getRange(fila, 40).setValue('');         // Limpiar token aprobación
-
-      // Generar tokens para auditoría y cierre
-      let tokenAud = Utilities.getUuid();
-      let tokenCierre = Utilities.getUuid();
-      hM.getRange(fila, 41).setValue(tokenAud);
-      hM.getRange(fila, 42).setValue(tokenCierre);
-
+      let fSol = data[i][28];
+      let fDueno = data[i][29];
+      let fSSA = data[i][30];
       let idPT = data[i][0];
-      
-      // Generar PDF
-      generarPDF_PT(idPT, fila);
-
-      // Notificar al auditor SSA
       let urlBase = ScriptApp.getService().getUrl();
-      enviarCorreoNotificacion(CONFIG.EMAIL_PRUEBA, idPT,
-        "Permiso de Trabajo Activo - Auditoría Disponible",
-        "El Permiso de Trabajo ha sido aprobado y se encuentra ACTIVO. Puede realizar la auditoría de campo cuando lo requiera.",
-        `${urlBase}?vista=auditoria&token=${tokenAud}`, "Ir a Auditoría"
-      );
 
-      // Notificar sobre el cierre
-      enviarCorreoNotificacion(CONFIG.EMAIL_PRUEBA, idPT,
-        "Permiso de Trabajo Activo - Cierre Disponible",
-        "El Permiso de Trabajo ha sido aprobado y se encuentra ACTIVO. Al finalizar la jornada, ingrese para cerrar el permiso.",
-        `${urlBase}?vista=cierre&token=${tokenCierre}`, "Ir a Cierre"
-      );
+      // Guardar firma en el hueco correspondiente y avanzar
+      if(!fSol) {
+        hM.getRange(fila, 29).setValue(firmaBase64); // Columna AC (29) = Firma Solicitante
+        // Generar token para Dueño
+        let newToken = Utilities.getUuid();
+        hM.getRange(fila, 40).setValue(newToken); // Pisar token actual
+        let correoSiguiente = obtenerCorreoDueño(data[i]); // Necesitamos extraer su correo (o config)
+        enviarCorreoNotificacion(correoSiguiente, idPT, "Aprobación Requerida (Dueño del Área)", "El Solicitante ha firmado. Falta su firma como Dueño del Área.", `${urlBase}?vista=aprobacion&token=${newToken}`, "Ir a Firmar");
+        return { success: true, ptActivo: false, idPT: idPT };
+      } 
+      else if(!fDueno) {
+        hM.getRange(fila, 30).setValue(firmaBase64); // Firma Dueño
+        // Generar token para SSA
+        let newToken = Utilities.getUuid();
+        hM.getRange(fila, 40).setValue(newToken);
+        let correoSiguiente = data[i][5] || obtenerCorreoRol('SST'); // Correo del analista original o rol general SST
+        enviarCorreoNotificacion(correoSiguiente, idPT, "Aprobación Requerida (SSA)", "El Solicitante y Dueño han firmado. Falta la firma de Seguridad y Salud (SSA) para activar el PT.", `${urlBase}?vista=aprobacion&token=${newToken}`, "Ir a Firmar");
+        return { success: true, ptActivo: false, idPT: idPT };
+      }
+      else if(!fSSA) {
+        hM.getRange(fila, 31).setValue(firmaBase64); // Firma SSA
+        hM.getRange(fila, 32).setValue(new Date()); // Fecha Aprobación Real
+        hM.getRange(fila, 3).setValue('Permiso Activo');
+        hM.getRange(fila, 40).setValue(''); // Limpiar token de aprobación ya finalizado
 
-      return { success: true, idPT: idPT };
+        // Generar tokens de vida activa: Auditoría y Cierre
+        let tokenAud = Utilities.getUuid();
+        let tokenCierre = Utilities.getUuid();
+        hM.getRange(fila, 41).setValue(tokenAud);
+        hM.getRange(fila, 42).setValue(tokenCierre);
+        
+        // Generar PDF con las firmas completas
+        generarPDF_PT(idPT, fila);
+
+        // Notificar activación y enviar URL de auditoría al SSA y cierre al Contratista
+        enviarCorreoNotificacion(data[i][5] || obtenerCorreoRol('SST'), idPT, "Permiso de Trabajo ACTIVO - Auditoría", "El PT ha sido aprobado por todos los actores. Puede auditar con este enlace.", `${urlBase}?vista=auditoria&token=${tokenAud}`, "Ir a Auditoría");
+        enviarCorreoNotificacion(data[i][3] || obtenerCorreoRol('Supervisor'), idPT, "Permiso de Trabajo ACTIVO - Cierre", "Al finalizar la jornada laboral o el trabajo, por favor inicie el cierre del formulario.", `${urlBase}?vista=cierre&token=${tokenCierre}`, "Ir a Cierre");
+
+        return { success: true, ptActivo: true, idPT: idPT };
+      }
     }
   }
-  return { success: false };
+  return { success: false, message: "Error procesando la firma secuencial." };
+}
+
+// Función auxiliar simple para leer correos de dueños si están en Config u otra columna. 
+// Asume que si no lo encuentra usa rol por defecto o el campo de login.
+function obtenerCorreoDueño(filaDatos) {
+  // Aquí idealmente deberíamos haber guardado el email del dueño. Si no, usamos fallback
+  return obtenerCorreoRol('Dueño') || CONFIG.EMAIL_PRUEBA; 
 }
 
 // ===================== MÓDULO 6: AUDITORÍA DE CAMPO =====================
@@ -343,13 +431,24 @@ function guardarAuditoria(datos, token) {
   }
 }
 
-// ===================== MÓDULO 7: CIERRE DEL PERMISO =====================
+// ===================== MÓDULO 7: CIERRE SECUENCIAL DEL PERMISO =====================
 
 function obtenerDatosCierre(token) {
   const ss = conectarDB();
   const data = ss.getSheetByName('PT_Maestro').getDataRange().getValues();
   for(let i = 1; i < data.length; i++) {
-    if(data[i][41] === token) {
+    if(data[i][41] === token) { // Col 42 para Cierre
+      
+      let fContratista = data[i][34]; // Col 35 - OJO: en DB maestra 34 es EstatusCierre. 35 es FirmaContratista. Modificaremos abajo según matriz.
+      let fSolicitante = data[i][35]; // Col 36
+      let fSSA = data[i][36];         // Col 37
+
+      let etapa = '';
+      if(!fContratista) etapa = 'Contratista';
+      else if(!fSolicitante) etapa = 'Solicitante';
+      else if(!fSSA) etapa = 'SSA';
+      else return { success: false, message: "Este permiso ya fue cerrado por todos los actores." };
+
       // Buscar auditoría si existe
       let auditorias = [];
       const dataAud = ss.getSheetByName('PT_Auditoria').getDataRange().getValues();
@@ -364,42 +463,72 @@ function obtenerDatosCierre(token) {
 
       return {
         success: true,
+        etapa: etapa,
         pt: data[i][0],
         empresa: data[i][4],
         area: data[i][10],
         desc: data[i][18],
         estatus: data[i][2],
         fechaInicio: data[i][31],
-        auditorias: auditorias
+        auditorias: auditorias,
+        // Datos para identificar al firmante
+        estatusCierreActual: data[i][33], // Si fue Culminado, Suspendido etc.
+        contratistaNom: data[i][4],
+        contratistaDoc: data[i][3], // correo contratista original
+        solicitanteNom: data[i][12],
+        solicitanteDoc: data[i][11] || obtenerCorreoRol('Solicitante') || '',
+        ssaDoc: data[i][5] || obtenerCorreoRol('SST') || ''
       };
     }
   }
   return { success: false, message: "Token inválido o permiso no encontrado." };
 }
 
-function guardarCierre(datos, token) {
+function guardarCierreSecuencial(tokenActual, firmaBase64, estatusCierreSelect) {
   try {
     const ss = conectarDB();
     const hM = ss.getSheetByName('PT_Maestro');
     const dataM = hM.getDataRange().getValues();
     
     for(let i = 1; i < dataM.length; i++) {
-      if(dataM[i][41] === token) {
+      if(dataM[i][41] === tokenActual) {
         let fila = i + 1;
-        hM.getRange(fila, 3).setValue('Cerrado');            // Estatus
-        hM.getRange(fila, 34).setValue(datos.estatusCierre); // Culminado/Suspendido/Extendido
-        hM.getRange(fila, 35).setValue(datos.firmaContratista);
-        hM.getRange(fila, 36).setValue(datos.firmaSolicitante);
-        hM.getRange(fila, 37).setValue(datos.firmaSSA);
-        hM.getRange(fila, 38).setValue(new Date());          // Fecha Cierre
-        hM.getRange(fila, 42).setValue('');                   // Limpiar token cierre
-
+        let fContratista = dataM[i][34];
+        let fSolicitante = dataM[i][35];
+        let fSSA = dataM[i][36];
         let idPT = dataM[i][0];
+        let urlBase = ScriptApp.getService().getUrl();
 
-        // Regenerar PDF con todos los datos (incluye cierre y auditoría)
-        try { generarPDF_PT(idPT, fila); } catch(ex) { Logger.log('Error regenerando PDF: ' + ex.message); }
+        if(!fContratista) {
+          hM.getRange(fila, 34).setValue(estatusCierreSelect); // Culminado / etc.
+          hM.getRange(fila, 35).setValue(firmaBase64); // Firma Contratista
+          
+          let newToken = Utilities.getUuid();
+          hM.getRange(fila, 42).setValue(newToken);
+          let correoSig = dataM[i][11] || obtenerCorreoRol('Solicitante');
+          enviarCorreoNotificacion(correoSig, idPT, "Cierre Requerido (Solicitante)", "El contratista ha finalizado labores y firmado retiro. Confirme recepción de área.", `${urlBase}?vista=cierre&token=${newToken}`, "Ir a Cierre");
+          return { success: true, ptCerrado: false, idPT: idPT };
+        }
+        else if(!fSolicitante) {
+          hM.getRange(fila, 36).setValue(firmaBase64); // Firma Solicitante
+          
+          let newToken = Utilities.getUuid();
+          hM.getRange(fila, 42).setValue(newToken);
+          let correoSig = dataM[i][5] || obtenerCorreoRol('SST');
+          enviarCorreoNotificacion(correoSig, idPT, "Cierre Requerido (SSA)", "El Solicitante aprobó la recepción del área. Requiere firma de cierre administrativo SSA.", `${urlBase}?vista=cierre&token=${newToken}`, "Ir a Cierre");
+          return { success: true, ptCerrado: false, idPT: idPT };
+        }
+        else if(!fSSA) {
+          hM.getRange(fila, 37).setValue(firmaBase64); // Firma SSA
+          hM.getRange(fila, 3).setValue('Cerrado (' + dataM[i][33] + ')'); // Estatus General
+          hM.getRange(fila, 38).setValue(new Date()); // Fecha Cierre Total
+          hM.getRange(fila, 42).setValue(''); // Limpiar token cierre, fin de ciclo.
 
-        return { success: true, idPT: idPT };
+          // Regenerar PDF final completo
+          try { generarPDF_PT(idPT, fila); } catch(ex) { Logger.log('Error regenerando PDF: ' + ex.message); }
+
+          return { success: true, ptCerrado: true, idPT: idPT, estatusElegido: dataM[i][33] };
+        }
       }
     }
     return { success: false, message: "Token inválido." };

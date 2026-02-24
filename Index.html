@@ -7,6 +7,8 @@
   <title>Solicitud PTD</title>
   <?!= include('Estilos') ?>
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <!-- Bootstrap JS (necesario para los modales y tabs) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 
 <body>
@@ -49,13 +51,12 @@
           </div>
         </div>
 
-        <!-- STEP 1 -->
         <div id="step1">
           <h5 class="step-header"><i class="bi bi-geo-alt-fill"></i> Módulo 1: Ubicación y Ejecutantes</h5>
           <div class="row g-3">
             <div class="col-md-6"><label class="form-label">Correo Google <span
-                  class="text-danger">*</span></label><input type="email" id="correoLogin" class="form-control"
-                required></div>
+                  class="text-danger">*</span></label><input type="email" id="correoLogin" class="form-control" required
+                readonly placeholder="Cargando..."></div>
             <div class="col-md-6"><label class="form-label">Empresa Contratista <span
                   class="text-danger">*</span></label><input type="text" id="empresa" list="listEmpresas"
                 class="form-control" required></div>
@@ -96,14 +97,21 @@
                     <th>Nombre</th>
                     <th>Cédula</th>
                     <th>Cargo</th>
+                    <th class="text-center" style="width:100px">Firma</th>
                     <th class="text-center" style="width:42px"></th>
                   </tr>
                 </thead>
                 <tbody id="tbodyTrab">
                   <tr>
                     <td><input type="text" class="form-control form-control-sm t-nombre" required></td>
-                    <td><input type="text" class="form-control form-control-sm t-cedula" required></td>
+                    <td><input type="text" class="form-control form-control-sm t-cedula" required
+                        onchange="vBtnFirma(this)"></td>
                     <td><input type="text" class="form-control form-control-sm t-cargo"></td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-sm btn-outline-primary btn-firmar-trab"
+                        onclick="abrirModalFirma(this)" disabled><i class="bi bi-pen"></i></button>
+                      <input type="hidden" class="t-firma-base64">
+                    </td>
                     <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm"
                         onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td>
                   </tr>
@@ -204,10 +212,11 @@
         <!-- STEP 5 -->
         <div id="step5" class="hidden">
           <h5 class="step-header"><i class="bi bi-pen-fill"></i> Firma del Analista Solicitante</h5>
-          <p class="text-muted small">Firme en el recuadro para confirmar la veracidad de los datos.</p>
-          <canvas id="pad" class="firma-box"></canvas>
-          <div class="text-end mt-2"><button type="button" class="btn btn-outline-back btn-sm" onclick="sp.clear()"><i
-                class="bi bi-eraser"></i> Limpiar</button></div>
+          <p class="text-muted small">Firme para confirmar la veracidad de los datos. Esta firma iniciará el flujo de
+            solicitudes y permisos.</p>
+
+          <?!= include('FirmaWidget').replace(/<%= id %>/g, 'AnalistaSST') ?>
+
           <div class="d-flex justify-content-between mt-4">
             <button type="button" class="btn btn-outline-back" onclick="nav(4)"><i class="bi bi-arrow-left"></i>
               Atrás</button>
@@ -221,13 +230,48 @@
     </div>
   </div>
 
+  <!-- Modal Firma Trabajador -->
+  <div class="modal fade" id="modalFirmaTrabajador" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pen"></i> Firma del Trabajador</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-2">Trabajador: <strong id="lblTrabNombre"></strong> (<span
+              id="lblTrabCedula"></span>)</p>
+          <div id="contenedorWidgetModal">
+            <!-- El widget se insertará aquí dinámicamente o usaremos el mismo con un ID genérico -->
+            <?!= include('FirmaWidget').replace(/<%= id %>/g, 'TrabajadorModal') ?>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="confirmarFirmaModal()">Confirmar Firma</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    let conf = {}, buk = [], sp;
+    let conf = {}, buk = [];
     let contadorRiesgos = 0;
     const TOTAL_STEPS = 5;
+    let filaTrabajadorActiva = null; // Para saber a qué fila asignar la firma del modal
 
     window.onload = () => {
-      sp = new SignaturePad(document.getElementById('pad'));
+      // 1. Obtener correo
+      google.script.run
+        .withSuccessHandler(email => { document.getElementById('correoLogin').value = email || ''; })
+        .getCorreoActual();
+
+      // 2. Inicializar Widget del Analista (Step 5)
+      setTimeout(() => {
+        inicializarFirmaWidget('AnalistaSST', document.getElementById('correoLogin').value);
+      }, 1500);
+
+      // 3. Inicializar listas y base de datos
       google.script.run.withSuccessHandler(r => { conf = r; inicializarListas(); }).withFailureHandler(e => alert('Error: ' + e.message)).obtenerListasConfig();
       google.script.run.withSuccessHandler(r => { buk = r; inicializarBuk(); }).obtenerColaboradoresBuk();
     };
@@ -270,8 +314,66 @@
       else { document.getElementById('procesoDueno').value = f ? f.proceso : ''; document.getElementById('deptoDueno').value = f ? f.departamento : ''; }
     }
 
-    function agregarTrabajador() { document.getElementById('tbodyTrab').insertAdjacentHTML('beforeend', '<tr><td><input type="text" class="form-control form-control-sm t-nombre" required></td><td><input type="text" class="form-control form-control-sm t-cedula" required></td><td><input type="text" class="form-control form-control-sm t-cargo"></td><td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td></tr>'); }
+    function agregarTrabajador() {
+      document.getElementById('tbodyTrab').insertAdjacentHTML('beforeend',
+        '<tr><td><input type="text" class="form-control form-control-sm t-nombre" required></td><td><input type="text" class="form-control form-control-sm t-cedula" required onchange="vBtnFirma(this)"></td><td><input type="text" class="form-control form-control-sm t-cargo"></td><td class="text-center"><button type="button" class="btn btn-sm btn-outline-primary btn-firmar-trab" onclick="abrirModalFirma(this)" disabled><i class="bi bi-pen"></i></button><input type="hidden" class="t-firma-base64"></td><td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td></tr>'
+      );
+    }
     function eliminarFila(b) { let tb = b.closest('tbody'); if (tb.rows.length > 1) b.closest('tr').remove(); else alert('Debe haber al menos un trabajador.'); }
+
+    function vBtnFirma(inputCI) {
+      let fila = inputCI.closest('tr');
+      let btn = fila.querySelector('.btn-firmar-trab');
+      let nombre = fila.querySelector('.t-nombre').value.trim();
+      let ci = inputCI.value.trim();
+      btn.disabled = !(nombre && ci);
+    }
+
+    function abrirModalFirma(btn) {
+      filaTrabajadorActiva = btn.closest('tr');
+      let nombre = filaTrabajadorActiva.querySelector('.t-nombre').value;
+      let ci = filaTrabajadorActiva.querySelector('.t-cedula').value;
+
+      document.getElementById('lblTrabNombre').innerText = nombre;
+      document.getElementById('lblTrabCedula').innerText = ci;
+
+      // Limpiar widget modal y configurarlo para este trabajador (busca por CI en vez de correo por ahora)
+      limpiarFirma('TrabajadorModal');
+      document.getElementById('chk-guardar-TrabajadorModal').checked = true;
+
+      let myModal = new bootstrap.Modal(document.getElementById('modalFirmaTrabajador'));
+      myModal.show();
+
+      // Al mostrarse por primera vez The DOM debe pintar el canvas
+      setTimeout(() => {
+        inicializarFirmaWidget('TrabajadorModal', ci); // pasamos CI como identificador falso de correo
+      }, 300);
+    }
+
+    function confirmarFirmaModal() {
+      let res = obtenerResultadoFirmaWidget('TrabajadorModal');
+      if (res.error) {
+        alert(res.error);
+        return;
+      }
+
+      // Guardar en la fila
+      filaTrabajadorActiva.querySelector('.t-firma-base64').value = res.base64;
+      let btn = filaTrabajadorActiva.querySelector('.btn-firmar-trab');
+      btn.classList.remove('btn-outline-primary');
+      btn.classList.add('btn-success');
+      btn.innerHTML = '<i class="bi bi-check2-all"></i> Firmado';
+
+      // Opcional: Solicitar a backend guardarFirmaBanco
+      if (res.guardarEnBanco) {
+        let ci = filaTrabajadorActiva.querySelector('.t-cedula').value;
+        let nombre = filaTrabajadorActiva.querySelector('.t-nombre').value;
+        google.script.run.guardarFirmaBanco(ci, nombre, res.base64);
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('modalFirmaTrabajador')).hide();
+    }
+
     function previewFoto(i) { let p = document.getElementById('fotoPreview'); if (i.files && i.files[0]) { let r = new FileReader(); r.onload = e => { p.src = e.target.result; p.style.display = 'block'; }; r.readAsDataURL(i.files[0]); } else p.style.display = 'none'; }
 
     function agregarRiesgo() {
@@ -284,15 +386,34 @@
     function calcRI(sel) { let card = sel.closest('.riesgo-card'); let s = card.querySelector('.r-severidad').value; let p = card.querySelector('.r-probabilidad').value; if (s && p) { let sv = parseInt(s) || 0; let pv = parseInt(p) || 0; let ri = sv * pv; let nv = ri <= 2 ? 'Bajo' : ri <= 6 ? 'Medio' : ri <= 9 ? 'Alto' : 'Crítico'; card.querySelector('.r-inherente').value = ri + ' (' + nv + ')'; } }
 
     function guardar() {
-      if (sp.isEmpty()) { alert('Firme el documento.'); return; }
+      // 1. Validar Firma Analista
+      let resFirmaSST = obtenerResultadoFirmaWidget('AnalistaSST');
+      if (resFirmaSST.error) { alert('SST: ' + resFirmaSST.error); nav(5); return; }
+
+      // 2. Validar Firmas Trabajadores
+      let trabajadores = [];
+      for (let f of document.getElementById('tbodyTrab').rows) {
+        let nom = f.querySelector('.t-nombre').value.trim();
+        let ced = f.querySelector('.t-cedula').value.trim();
+        let fir = f.querySelector('.t-firma-base64').value;
+        if (!fir) { alert(`Falta la firma del trabajador ${nom} (${ced}) en el Módulo 1.`); nav(1); return; }
+        trabajadores.push({ nombre: nom, cedula: ced, cargo: f.querySelector('.t-cargo').value.trim(), firma: fir });
+      }
+
       let btn = document.getElementById('btnGuardar'); btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...'; btn.disabled = true;
-      let trabajadores = []; for (let f of document.getElementById('tbodyTrab').rows) { trabajadores.push({ nombre: f.querySelector('.t-nombre').value.trim(), cedula: f.querySelector('.t-cedula').value.trim(), cargo: f.querySelector('.t-cargo').value.trim() }); }
       let riesgos = []; for (let c of document.querySelectorAll('.riesgo-card')) { riesgos.push({ peligro: c.querySelector('.r-peligro').value, severidad: c.querySelector('.r-severidad').value, probabilidad: c.querySelector('.r-probabilidad').value, jerarquia: c.querySelector('.r-jerarquia').value, controles: c.querySelector('.r-controles').value.trim() }); }
       let fotoPromise = new Promise(resolve => { let fi = document.getElementById('fotoArea'); if (fi.files && fi.files[0]) { let r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(fi.files[0]); } else resolve(''); });
+
       fotoPromise.then(foto64 => {
         let tipoSel = Array.from(document.getElementById('tipoRiesgo').selectedOptions).map(o => o.value).join(', ');
         if (document.getElementById('altoRiesgo').value === 'NO') tipoSel = 'N/A';
-        let d = { correoLogin: document.getElementById('correoLogin').value.trim(), empresa: document.getElementById('empresa').value.trim(), nombreSST: document.getElementById('nombreSST').value.trim(), cedulaSST: document.getElementById('cedulaSST').value.trim(), unidadNegocio: document.getElementById('unidadNegocio').value, localidad: document.getElementById('localidad').value, sede: document.getElementById('sede').value, areaEquipo: document.getElementById('areaEquipo').value.trim(), fotoAreaBase64: foto64, solicitanteInterno: document.getElementById('solic').value, deptoSolicitante: document.getElementById('deptoSolicitante').value, procesoSolicitante: document.getElementById('procesoSolicitante').value, duenoArea: document.getElementById('dueno').value, deptoDueno: document.getElementById('deptoDueno').value, procesoDueno: document.getElementById('procesoDueno').value, descripcion: document.getElementById('desc').value.trim(), tareasPrincipales: document.getElementById('tareasPrincipales').value.trim(), equiposHerramientas: document.getElementById('equiposHerramientas').value.trim(), altoRiesgo: document.getElementById('altoRiesgo').value, tipoRiesgo: tipoSel, gases: { o2: document.getElementById('gasO2').value || '', lel: document.getElementById('gasLEL').value || '', co: document.getElementById('gasCO').value || '', h2s: document.getElementById('gasH2S').value || '' }, firmaBase64: sp.toDataURL(), trabajadores: trabajadores, riesgos: riesgos };
+
+        // Solicitar guardar la firma en banco si checked
+        let correoSST = document.getElementById('correoLogin').value.trim();
+        let nombreSST = document.getElementById('nombreSST').value.trim();
+        if (resFirmaSST.guardarEnBanco) { google.script.run.guardarFirmaBanco(correoSST, nombreSST, resFirmaSST.base64); }
+
+        let d = { correoLogin: correoSST, empresa: document.getElementById('empresa').value.trim(), nombreSST: nombreSST, cedulaSST: document.getElementById('cedulaSST').value.trim(), unidadNegocio: document.getElementById('unidadNegocio').value, localidad: document.getElementById('localidad').value, sede: document.getElementById('sede').value, areaEquipo: document.getElementById('areaEquipo').value.trim(), fotoAreaBase64: foto64, solicitanteInterno: document.getElementById('solic').value, deptoSolicitante: document.getElementById('deptoSolicitante').value, procesoSolicitante: document.getElementById('procesoSolicitante').value, duenoArea: document.getElementById('dueno').value, deptoDueno: document.getElementById('deptoDueno').value, procesoDueno: document.getElementById('procesoDueno').value, descripcion: document.getElementById('desc').value.trim(), tareasPrincipales: document.getElementById('tareasPrincipales').value.trim(), equiposHerramientas: document.getElementById('equiposHerramientas').value.trim(), altoRiesgo: document.getElementById('altoRiesgo').value, tipoRiesgo: tipoSel, gases: { o2: document.getElementById('gasO2').value || '', lel: document.getElementById('gasLEL').value || '', co: document.getElementById('gasCO').value || '', h2s: document.getElementById('gasH2S').value || '' }, firmaBase64: resFirmaSST.base64, trabajadores: trabajadores, riesgos: riesgos };
         google.script.run.withSuccessHandler(r => { if (r.success) { document.querySelectorAll('[id^="step"]').forEach(e => e.classList.add('hidden')); document.getElementById('stepResult').classList.remove('hidden'); document.getElementById('stepResult').innerHTML = '<div class="success-screen"><div class="icon"><i class="bi bi-check-circle-fill"></i></div><h4>¡Permiso Registrado!</h4><p class="pt-id">' + r.idPT + '</p><p class="text-muted">' + (r.requiereMedico ? 'Enviado al Servicio Médico para validación.' : 'Enviado a los Validadores para aprobación.') + '</p><div class="info-bar mt-3"><small>Se ha notificado por correo a los responsables del siguiente paso.</small></div></div>'; } else { alert('Error: ' + r.message); btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD'; btn.disabled = false; } }).withFailureHandler(e => { alert('Error: ' + e.message); btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD'; btn.disabled = false; }).guardarNuevoPT(d);
       });
     }

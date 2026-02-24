@@ -1,0 +1,231 @@
+<div class="firma-widget-container">
+  <!-- Pestañas del Widget -->
+  <ul class="nav nav-tabs firma-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-dibujar-<%= id %>" data-bs-toggle="tab" data-bs-target="#panel-dibujar-<%= id %>" type="button" role="tab"><i class="bi bi-pen"></i> Dibujar</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-banco-<%= id %>" data-bs-toggle="tab" data-bs-target="#panel-banco-<%= id %>" type="button" role="tab"><i class="bi bi-person-badge"></i> Banco de Firmas</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-adjuntar-<%= id %>" data-bs-toggle="tab" data-bs-target="#panel-adjuntar-<%= id %>" type="button" role="tab"><i class="bi bi-upload"></i> Adjuntar</button>
+    </li>
+  </ul>
+
+  <!-- Contenido de las Pestañas -->
+  <div class="tab-content border border-top-0 rounded-bottom p-3 bg-white">
+    
+    <!-- Panel: Dibujar -->
+    <div class="tab-pane fade show active" id="panel-dibujar-<%= id %>" role="tabpanel">
+      <p class="text-muted small mb-2"><i class="bi bi-info-circle"></i> Firme dentro del recuadro.</p>
+      <div class="canvas-wrapper" style="border: 2px dashed #003366; border-radius: 8px; background: #fafafa; overflow: hidden; position: relative;">
+        <canvas id="canvas-<%= id %>" style="width: 100%; height: 200px; display: block; touch-action: none;"></canvas>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <div class="form-check">
+          <input class="form-check-input chk-guardar-firma" type="checkbox" id="chk-guardar-<%= id %>" checked>
+          <label class="form-check-label small" for="chk-guardar-<%= id %>">
+            Guardar en mi Banco de Firmas
+          </label>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarFirma('<%= id %>')"><i class="bi bi-eraser"></i> Limpiar</button>
+      </div>
+    </div>
+
+    <!-- Panel: Banco de Firmas -->
+    <div class="tab-pane fade" id="panel-banco-<%= id %>" role="tabpanel">
+      <div class="text-center py-4" id="banco-loader-<%= id %>">
+        <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+        <p class="small text-muted mt-2 mb-0">Buscando firmas guardadas...</p>
+      </div>
+      <div id="banco-resultado-<%= id %>" class="d-none text-center">
+        <p class="text-success small fw-bold mb-2"><i class="bi bi-check-circle"></i> Firma encontrada</p>
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; display: inline-block; background: #fff;">
+          <img id="img-banco-<%= id %>" src="" alt="Firma Guardada" style="max-height: 120px; max-width: 100%;">
+        </div>
+        <p class="small text-muted mt-2">¿Desea utilizar esta firma?</p>
+      </div>
+      <div id="banco-vacio-<%= id %>" class="d-none text-center py-4">
+        <i class="bi bi-journal-x fs-1 text-muted"></i>
+        <p class="small text-muted mt-2 mb-0">No se encontraron firmas guardadas para este usuario.</p>
+        <p class="small text-muted">Dibuje o adjunte su firma para guardarla.</p>
+      </div>
+    </div>
+
+    <!-- Panel: Adjuntar -->
+    <div class="tab-pane fade" id="panel-adjuntar-<%= id %>" role="tabpanel">
+      <p class="text-muted small mb-2"><i class="bi bi-image"></i> Suba una imagen clara de su firma (fondo blanco preferiblemente).</p>
+      <input class="form-control" type="file" id="file-<%= id %>" accept="image/png, image/jpeg, image/jpg" onchange="previewFirmaFile('<%= id %>')">
+      
+      <div id="preview-container-<%= id %>" class="mt-3 text-center d-none">
+        <p class="small fw-semibold mb-1">Vista previa:</p>
+        <img id="img-preview-<%= id %>" style="max-height: 120px; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
+      </div>
+
+      <div class="form-check mt-3">
+        <input class="form-check-input chk-guardar-firma" type="checkbox" id="chk-guardar-file-<%= id %>" checked>
+        <label class="form-check-label small" for="chk-guardar-file-<%= id %>">
+          Guardar en mi Banco de Firmas
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Inicialización o Registro
+  if (typeof firmasRegistradas === 'undefined') {
+    var firmasRegistradas = {};
+  }
+
+  function inicializarFirmaWidget(idPad, correoUsuario) {
+    const canvas = document.getElementById('canvas-' + idPad);
+    if (!canvas) return;
+
+    // Crear instancia de SignaturePad
+    const signaturePad = new SignaturePad(canvas, {
+      backgroundColor: 'rgba(255, 255, 255, 0)',
+      penColor: 'rgb(0, 0, 0)'
+    });
+
+    firmasRegistradas[idPad] = {
+      pad: signaturePad,
+      correo: correoUsuario,
+      metodoActivo: 'dibujar' // dibujar, banco, adjuntar
+    };
+
+    // Ajustar resolución del canvas para evitar desfase del puntero (Fix Bug)
+    function resizeCanvas() {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      // Solo hacer el resize si el ancho es distinto a 0 (está visible)
+      if (canvas.offsetWidth === 0) return; 
+      
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      canvas.getContext("2d").scale(ratio, ratio);
+      signaturePad.clear();
+    }
+
+    // Llamar al resize inicial y al cambiar tamaño de ventana
+    window.addEventListener("resize", resizeCanvas);
+    
+    // Necesario porque si la pestaña estaba oculta, el offsetWidth es 0
+    const tabEl = document.querySelector('button[data-bs-target="#panel-dibujar-' + idPad + '"]');
+    if(tabEl) {
+      tabEl.addEventListener('shown.bs.tab', function () {
+        resizeCanvas();
+      });
+    }
+    
+    // Resize forzado si está visible de una vez
+    setTimeout(resizeCanvas, 300);
+
+    // Tab Listeners para gestionar el estado
+    document.getElementById('tab-dibujar-' + idPad).addEventListener('click', () => firmasRegistradas[idPad].metodoActivo = 'dibujar');
+    document.getElementById('tab-adjuntar-' + idPad).addEventListener('click', () => firmasRegistradas[idPad].metodoActivo = 'adjuntar');
+    document.getElementById('tab-banco-' + idPad).addEventListener('click', () => {
+      firmasRegistradas[idPad].metodoActivo = 'banco';
+      if (!firmasRegistradas[idPad].buscadoEnBanco) {
+        buscarFirmaBanco(idPad, correoUsuario);
+      }
+    });
+
+    // Si viene en modal, el modal trigger debe ejecutar resizeCanvas también
+    return signaturePad;
+  }
+
+  function limpiarFirma(idPad) {
+    if (firmasRegistradas[idPad] && firmasRegistradas[idPad].pad) {
+      firmasRegistradas[idPad].pad.clear();
+    }
+  }
+
+  function previewFirmaFile(idPad) {
+    const fileInput = document.getElementById('file-' + idPad);
+    const previewContainer = document.getElementById('preview-container-' + idPad);
+    const imgPreview = document.getElementById('img-preview-' + idPad);
+
+    if (fileInput.files && fileInput.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imgPreview.src = e.target.result;
+        previewContainer.classList.remove('d-none');
+        firmasRegistradas[idPad].imagenAdjuntada = e.target.result;
+      }
+      reader.readAsDataURL(fileInput.files[0]);
+    } else {
+      previewContainer.classList.add('d-none');
+      firmasRegistradas[idPad].imagenAdjuntada = null;
+    }
+  }
+
+  function buscarFirmaBanco(idPad, correo) {
+    const loader = document.getElementById('banco-loader-' + idPad);
+    const resVacio = document.getElementById('banco-vacio-' + idPad);
+    const resFound = document.getElementById('banco-resultado-' + idPad);
+    const imgBanco = document.getElementById('img-banco-' + idPad);
+
+    // En un caso real podría no haber correo (ej. trabajador). En ese caso se omite la búsqueda por ahora.
+    if (!correo) {
+      loader.classList.add('d-none');
+      resVacio.classList.remove('d-none');
+      return;
+    }
+
+    loader.classList.remove('d-none');
+    resVacio.classList.add('d-none');
+    resFound.classList.add('d-none');
+
+    google.script.run
+      .withSuccessHandler(function(firmaBase64) {
+        firmasRegistradas[idPad].buscadoEnBanco = true;
+        loader.classList.add('d-none');
+        
+        if (firmaBase64) {
+          imgBanco.src = firmaBase64;
+          resFound.classList.remove('d-none');
+          firmasRegistradas[idPad].firmaBancoBase64 = firmaBase64;
+        } else {
+          resVacio.classList.remove('d-none');
+          firmasRegistradas[idPad].firmaBancoBase64 = null;
+        }
+      })
+      .withFailureHandler(function(err) {
+        console.error("Error buscando firma:", err);
+        loader.classList.add('d-none');
+        resVacio.classList.remove('d-none');
+      })
+      .obtenerFirmaGuardada(correo);
+  }
+
+  // Función principal para obtener el Base64 resultante de este id
+  // Devuelve un objeto: { base64: "...", guardarEnBanco: true/false }
+  function obtenerResultadoFirmaWidget(idPad) {
+    const obj = firmasRegistradas[idPad];
+    if (!obj) return { error: "Widget no inicializado" };
+
+    let resultadoBase64 = null;
+    let quiereGuardar = false;
+
+    if (obj.metodoActivo === 'dibujar') {
+      if (obj.pad.isEmpty()) return { error: "Por favor dibuje su firma." };
+      resultadoBase64 = obj.pad.toDataURL();
+      quiereGuardar = document.getElementById('chk-guardar-' + idPad).checked;
+    } 
+    else if (obj.metodoActivo === 'adjuntar') {
+      if (!obj.imagenAdjuntada) return { error: "Por favor adjunte una imagen de su firma." };
+      resultadoBase64 = obj.imagenAdjuntada;
+      quiereGuardar = document.getElementById('chk-guardar-file-' + idPad).checked;
+    }
+    else if (obj.metodoActivo === 'banco') {
+      if (!obj.firmaBancoBase64) return { error: "No seleccionó una firma válida del banco." };
+      resultadoBase64 = obj.firmaBancoBase64;
+      quiereGuardar = false; // Ya está en el banco
+    }
+
+    return {
+      base64: resultadoBase64,
+      guardarEnBanco: quiereGuardar
+    };
+  }
+</script>

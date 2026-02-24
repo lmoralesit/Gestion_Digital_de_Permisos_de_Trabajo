@@ -15,6 +15,7 @@ function generarPDF_PT(idPT, filaMaestro) {
       if (dataTrab[i][1] === idPT) {
         trabajadores.push({
           nombre: dataTrab[i][2] || '', cedula: dataTrab[i][3] || '', cargo: dataTrab[i][4] || '',
+          firmaBase64: dataTrab[i][5] || '', // COLUMNA 6
           tension: dataTrab[i][6] || '', fc: dataTrab[i][7] || '',
           aptitud: dataTrab[i][8] || '', obsMedica: dataTrab[i][9] || '',
           validadoPor: dataTrab[i][10] || ''
@@ -80,11 +81,11 @@ function generarPDF_PT(idPT, filaMaestro) {
     reemplazar(body, '<<Personal Ejecutante 1>>', t1.nombre || '—');
     reemplazar(body, '<<Cédula Personal Ejecutante 1>>', t1.cedula || '—');
     reemplazar(body, '<<Cargo Personal Ejecutante 1>>', t1.cargo || '—');
-    reemplazar(body, '<<Firma de Personal Ejecutante 1>>', '—');
+    reemplazarFirma(body, '<<Firma de Personal Ejecutante 1>>', t1.firmaBase64);
     reemplazar(body, '<<Personal Ejecutante 2>>', t2.nombre || '—');
     reemplazar(body, '<<Cédula Personal Ejecutante 2>>', t2.cedula || '—');
     reemplazar(body, '<<Cargo Personal Ejecutante 2>>', t2.cargo || '—');
-    reemplazar(body, '<<Firma de Personal Ejecutante 2>>', '—');
+    reemplazarFirma(body, '<<Firma de Personal Ejecutante 2>>', t2.firmaBase64);
 
     // Foto del área
     reemplazar(body, '<<Foto del Área/Equipo donde se ejecutara el trabajo>>', datos[11] ? 'Ver foto: ' + datos[11] : 'No adjunta');
@@ -207,6 +208,53 @@ function reemplazarPrimero(body, placeholder, valor) {
   let texto = (valor !== undefined && valor !== null && valor !== '') ? valor.toString() : '—';
   element.asText().deleteText(start, end);
   element.asText().insertText(start, texto);
+}
+
+/** 
+ * Reemplaza un placeholder por una imagen basándose en su código Base64.
+ * Si no hay Base64, coloca un guion "—".
+ */
+function reemplazarFirma(body, placeholder, base64Data) {
+  let regex = escapeRegex(placeholder);
+  let found = body.findText(regex);
+  if (!found) return;
+
+  let element = found.getElement();
+  let start = found.getStartOffset();
+  let end = found.getEndOffsetInclusive();
+
+  if (base64Data && base64Data.indexOf('data:image') === 0) {
+    try {
+      // Borrar texto placeholder
+      element.asText().deleteText(start, end);
+      
+      // Decodificar imagen
+      let base64 = base64Data.split(',')[1];
+      let blob = Utilities.newBlob(Utilities.base64Decode(base64), 'image/png');
+      
+      // Insertar imagen
+      let parent = element.getParent();
+      // Verificamos si es un párrafo u otro elemento válido para hospedar una imagen inline
+      if(parent.getType() === DocumentApp.ElementType.PARAGRAPH || parent.getType() === DocumentApp.ElementType.LIST_ITEM) {
+         let inlineImage = parent.asParagraph().insertInlineImage(start, blob);
+         // Dimensiones proporcionales (ancho máximo 120px pa q quepa en caja)
+         let width = inlineImage.getWidth();
+         let height = inlineImage.getHeight();
+         let newWidth = 120;
+         let newHeight = (height * newWidth) / width;
+         inlineImage.setWidth(newWidth);
+         inlineImage.setHeight(newHeight);
+      } else {
+         element.asText().insertText(start, '✓ Firmado (Error Render)');
+      }
+    } catch(e) {
+      Logger.log("Error decodificando firma " + placeholder + ": " + e.message);
+      element.asText().insertText(start, '—');
+    }
+  } else {
+    element.asText().deleteText(start, end);
+    element.asText().insertText(start, '—');
+  }
 }
 
 /** Escapa caracteres especiales para regex de Java (usado en replaceText) */

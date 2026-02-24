@@ -42,6 +42,12 @@ function configurarBaseDeDatos() {
       'Ejecucion_Procedimiento', 'Controles_Emergencia', 'Gestion_Ambiental',
       'Observaciones', 'Porcentaje_Cumplimiento'
     ],
+    'Banco_Firmas': [
+      'Correo_Identificador', 'Nombre', 'Firma_Base64', 'Fecha_Actualizacion'
+    ],
+    'Config_Roles': [
+      'Rol', 'Nombre', 'Correo'
+    ],
     'Config_Listas': [
       'Empresa_Contratista', 'Unidad_Negocio', 'Localidad', 'Mapeo_Sedes',
       'Tipo_Trabajo_AR', 'Peligros', 'Severidad', 'Probabilidad', 'Jerarquia'
