@@ -159,10 +159,18 @@
                 document.getElementById('listaAud').innerHTML = h;
             }
 
-            // Inicializar Widget de Firma asíncronamente
-            setTimeout(() => {
-                inicializarFirmaWidget('Cerrador', correoEtapa);
-            }, 500);
+            // Inicializar Widget de Firma asíncronamente con robustez
+            let intentos = 0;
+            function intentarInit() {
+                if (typeof inicializarFirmaWidget === 'function') {
+                    let tipo = (etapaActual === 'Contratista') ? 'Contratista' : 'Interno';
+                    inicializarFirmaWidget('Cerrador', correoEtapa, tipo);
+                } else if (intentos < 10) {
+                    intentos++;
+                    setTimeout(intentarInit, 500);
+                }
+            }
+            intentarInit();
         }
 
         function cerrarEtapa() {

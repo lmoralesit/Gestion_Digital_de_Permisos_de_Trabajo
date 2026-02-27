@@ -3,7 +3,12 @@ const CONFIG = {
   DOC_TEMPLATE_ID: '1FRjYXbYkMBxZu93TUMoRD4A3AW7KYpN7DZ2VAr_f5R4',
   SHEET_DB_ID: '1hbC0FYNYjRy4cUWZyjbG_rlJaXjM_Eqf-x5S3QIawmw',
   BUK_SHEET_ID: '1ZQkiBPUVdOWV8PlSeWDu9Lc6Jr424fhE99yVDHT0ax0',
-  EMAIL_PRUEBA: 'lmorales@alfonzorivas.com'
+  EMAIL_PRUEBA: 'lmorales@alfonzorivas.com',
+  MEDICOS: {
+    'La California': 'serviciomedico.lacalifornia@alfonzorivas.com',
+    'Turmero': 'serviciomedico.turmero@alfonzorivas.com',
+    'Cagua': 'serviciomedico.cagua@alfonzorivas.com'
+  }
 };
 
 function conectarDB() { return SpreadsheetApp.openById(CONFIG.SHEET_DB_ID); }
@@ -32,7 +37,7 @@ function configurarBaseDeDatos() {
       'Aptitud_Medica', 'Observaciones_Medicas', 'Validado_Por_Medico', 'Fecha_Validacion'
     ],
     'PT_Riesgos': [
-      'ID_Riesgo', 'ID_PT', 'Peligro_Identificado', 'Severidad',
+      'ID_Riesgo', 'ID_PT', 'Peligro_Identificado', 'Observacion_Peligro', 'Severidad',
       'Probabilidad', 'Riesgo_Inherente', 'Jerarquia_Control',
       'Controles_Aplicados', 'Riesgo_Residual'
     ],

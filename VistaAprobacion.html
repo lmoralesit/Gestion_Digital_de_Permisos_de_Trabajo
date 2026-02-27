@@ -113,10 +113,18 @@
       html += '</div></div>';
       document.getElementById('resumenDetalle').innerHTML = html;
 
-      // Inicializar Widget de Firma asíncronamente
-      setTimeout(() => {
-        inicializarFirmaWidget('Aprobador', correoEtapa);
-      }, 500);
+      // Inicializar Widget de Firma asíncronamente con robustez
+      let intentos = 0;
+      function intentarInit() {
+        if (typeof inicializarFirmaWidget === 'function') {
+          // Los aprobadores son siempre internos
+          inicializarFirmaWidget('Aprobador', correoEtapa, 'Interno');
+        } else if (intentos < 10) {
+          intentos++;
+          setTimeout(intentarInit, 500);
+        }
+      }
+      intentarInit();
     }
 
     function aprobarEtapa() {

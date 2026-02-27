@@ -1,24 +1,29 @@
 <div class="firma-widget-container">
   <!-- Pestañas del Widget -->
-  <ul class="nav nav-tabs firma-tabs" role="tablist">
-    <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="tab-dibujar-<%= id %>" data-bs-toggle="tab" data-bs-target="#panel-dibujar-<%= id %>" type="button" role="tab"><i class="bi bi-pen"></i> Dibujar</button>
+  <ul class="nav nav-tabs firma-tabs" id="tabs-<%= id %>" role="tablist">
+    <li class="nav-item tab-dibujar-li-<%= id %>" role="presentation">
+      <button class="nav-link active" id="tab-dibujar-<%= id %>" data-bs-toggle="tab"
+        data-bs-target="#panel-dibujar-<%= id %>" type="button" role="tab"><i class="bi bi-pen"></i> Dibujar</button>
     </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="tab-banco-<%= id %>" data-bs-toggle="tab" data-bs-target="#panel-banco-<%= id %>" type="button" role="tab"><i class="bi bi-person-badge"></i> Banco de Firmas</button>
+    <li class="nav-item tab-banco-li-<%= id %>" role="presentation">
+      <button class="nav-link" id="tab-banco-<%= id %>" data-bs-toggle="tab" data-bs-target="#panel-banco-<%= id %>"
+        type="button" role="tab"><i class="bi bi-person-badge"></i> Banco de Firmas</button>
     </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="tab-adjuntar-<%= id %>" data-bs-toggle="tab" data-bs-target="#panel-adjuntar-<%= id %>" type="button" role="tab"><i class="bi bi-upload"></i> Adjuntar</button>
+    <li class="nav-item tab-adjuntar-li-<%= id %>" role="presentation">
+      <button class="nav-link" id="tab-adjuntar-<%= id %>" data-bs-toggle="tab"
+        data-bs-target="#panel-adjuntar-<%= id %>" type="button" role="tab"><i class="bi bi-upload"></i>
+        Adjuntar</button>
     </li>
   </ul>
 
   <!-- Contenido de las Pestañas -->
   <div class="tab-content border border-top-0 rounded-bottom p-3 bg-white">
-    
+
     <!-- Panel: Dibujar -->
     <div class="tab-pane fade show active" id="panel-dibujar-<%= id %>" role="tabpanel">
       <p class="text-muted small mb-2"><i class="bi bi-info-circle"></i> Firme dentro del recuadro.</p>
-      <div class="canvas-wrapper" style="border: 2px dashed #003366; border-radius: 8px; background: #fafafa; overflow: hidden; position: relative;">
+      <div class="canvas-wrapper"
+        style="border: 2px dashed #003366; border-radius: 8px; background: #fafafa; overflow: hidden; position: relative;">
         <canvas id="canvas-<%= id %>" style="width: 100%; height: 200px; display: block; touch-action: none;"></canvas>
       </div>
       <div class="d-flex justify-content-between align-items-center mt-2">
@@ -28,7 +33,8 @@
             Guardar en mi Banco de Firmas
           </label>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarFirma('<%= id %>')"><i class="bi bi-eraser"></i> Limpiar</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarFirma('<%= id %>')"><i
+            class="bi bi-eraser"></i> Limpiar</button>
       </div>
     </div>
 
@@ -40,7 +46,8 @@
       </div>
       <div id="banco-resultado-<%= id %>" class="d-none text-center">
         <p class="text-success small fw-bold mb-2"><i class="bi bi-check-circle"></i> Firma encontrada</p>
-        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; display: inline-block; background: #fff;">
+        <div
+          style="border: 1px solid #ddd; border-radius: 8px; padding: 10px; display: inline-block; background: #fff;">
           <img id="img-banco-<%= id %>" src="" alt="Firma Guardada" style="max-height: 120px; max-width: 100%;">
         </div>
         <p class="small text-muted mt-2">¿Desea utilizar esta firma?</p>
@@ -54,12 +61,15 @@
 
     <!-- Panel: Adjuntar -->
     <div class="tab-pane fade" id="panel-adjuntar-<%= id %>" role="tabpanel">
-      <p class="text-muted small mb-2"><i class="bi bi-image"></i> Suba una imagen clara de su firma (fondo blanco preferiblemente).</p>
-      <input class="form-control" type="file" id="file-<%= id %>" accept="image/png, image/jpeg, image/jpg" onchange="previewFirmaFile('<%= id %>')">
-      
+      <p class="text-muted small mb-2"><i class="bi bi-image"></i> Suba una imagen clara de su firma (fondo blanco
+        preferiblemente).</p>
+      <input class="form-control" type="file" id="file-<%= id %>" accept="image/png, image/jpeg, image/jpg"
+        onchange="previewFirmaFile('<%= id %>')">
+
       <div id="preview-container-<%= id %>" class="mt-3 text-center d-none">
         <p class="small fw-semibold mb-1">Vista previa:</p>
-        <img id="img-preview-<%= id %>" style="max-height: 120px; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
+        <img id="img-preview-<%= id %>"
+          style="max-height: 120px; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
       </div>
 
       <div class="form-check mt-3">
@@ -78,9 +88,25 @@
     var firmasRegistradas = {};
   }
 
-  function inicializarFirmaWidget(idPad, correoUsuario) {
+  function inicializarFirmaWidget(idPad, correoUsuario, tipoUsuario) {
+    console.log("Inicializando Widget:", idPad, correoUsuario, tipoUsuario);
     const canvas = document.getElementById('canvas-' + idPad);
-    if (!canvas) return;
+    if (!canvas) {
+      console.warn("Canvas no encontrado para ID:", idPad);
+      return;
+    }
+
+    // Restricciones para usuarios externos (Contratistas)
+    if (tipoUsuario === 'Contratista') {
+      document.querySelector('.tab-dibujar-li-' + idPad).classList.add('d-none');
+      document.querySelector('.tab-banco-li-' + idPad).classList.add('d-none');
+      const tabAdj = document.getElementById('tab-adjuntar-' + idPad);
+      if (tabAdj) {
+        bootstrap.Tab.getOrCreateInstance(tabAdj).show();
+        firmasRegistradas[idPad] = firmasRegistradas[idPad] || {};
+        firmasRegistradas[idPad].metodoActivo = 'adjuntar';
+      }
+    }
 
     // Crear instancia de SignaturePad
     const signaturePad = new SignaturePad(canvas, {
@@ -91,15 +117,15 @@
     firmasRegistradas[idPad] = {
       pad: signaturePad,
       correo: correoUsuario,
-      metodoActivo: 'dibujar' // dibujar, banco, adjuntar
+      metodoActivo: (tipoUsuario === 'Contratista') ? 'adjuntar' : 'dibujar' // dibujar, banco, adjuntar
     };
 
     // Ajustar resolución del canvas para evitar desfase del puntero (Fix Bug)
     function resizeCanvas() {
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
       // Solo hacer el resize si el ancho es distinto a 0 (está visible)
-      if (canvas.offsetWidth === 0) return; 
-      
+      if (canvas.offsetWidth === 0) return;
+
       canvas.width = canvas.offsetWidth * ratio;
       canvas.height = canvas.offsetHeight * ratio;
       canvas.getContext("2d").scale(ratio, ratio);
@@ -108,15 +134,15 @@
 
     // Llamar al resize inicial y al cambiar tamaño de ventana
     window.addEventListener("resize", resizeCanvas);
-    
+
     // Necesario porque si la pestaña estaba oculta, el offsetWidth es 0
     const tabEl = document.querySelector('button[data-bs-target="#panel-dibujar-' + idPad + '"]');
-    if(tabEl) {
+    if (tabEl) {
       tabEl.addEventListener('shown.bs.tab', function () {
         resizeCanvas();
       });
     }
-    
+
     // Resize forzado si está visible de una vez
     setTimeout(resizeCanvas, 300);
 
@@ -147,7 +173,7 @@
 
     if (fileInput.files && fileInput.files[0]) {
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         imgPreview.src = e.target.result;
         previewContainer.classList.remove('d-none');
         firmasRegistradas[idPad].imagenAdjuntada = e.target.result;
@@ -177,10 +203,10 @@
     resFound.classList.add('d-none');
 
     google.script.run
-      .withSuccessHandler(function(firmaBase64) {
+      .withSuccessHandler(function (firmaBase64) {
         firmasRegistradas[idPad].buscadoEnBanco = true;
         loader.classList.add('d-none');
-        
+
         if (firmaBase64) {
           imgBanco.src = firmaBase64;
           resFound.classList.remove('d-none');
@@ -190,7 +216,7 @@
           firmasRegistradas[idPad].firmaBancoBase64 = null;
         }
       })
-      .withFailureHandler(function(err) {
+      .withFailureHandler(function (err) {
         console.error("Error buscando firma:", err);
         loader.classList.add('d-none');
         resVacio.classList.remove('d-none');
@@ -211,7 +237,7 @@
       if (obj.pad.isEmpty()) return { error: "Por favor dibuje su firma." };
       resultadoBase64 = obj.pad.toDataURL();
       quiereGuardar = document.getElementById('chk-guardar-' + idPad).checked;
-    } 
+    }
     else if (obj.metodoActivo === 'adjuntar') {
       if (!obj.imagenAdjuntada) return { error: "Por favor adjunte una imagen de su firma." };
       resultadoBase64 = obj.imagenAdjuntada;

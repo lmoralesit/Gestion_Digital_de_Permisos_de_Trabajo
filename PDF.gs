@@ -15,7 +15,7 @@ function generarPDF_PT(idPT, filaMaestro) {
       if (dataTrab[i][1] === idPT) {
         trabajadores.push({
           nombre: dataTrab[i][2] || '', cedula: dataTrab[i][3] || '', cargo: dataTrab[i][4] || '',
-          firmaBase64: dataTrab[i][5] || '', // COLUMNA 6
+          urlFirma: dataTrab[i][5] || '', // Column 6 - Firma_Trabajador URL
           tension: dataTrab[i][6] || '', fc: dataTrab[i][7] || '',
           aptitud: dataTrab[i][8] || '', obsMedica: dataTrab[i][9] || '',
           validadoPor: dataTrab[i][10] || ''
@@ -29,10 +29,14 @@ function generarPDF_PT(idPT, filaMaestro) {
     for (let i = 1; i < dataRiesgos.length; i++) {
       if (dataRiesgos[i][1] === idPT) {
         riesgos.push({
-          peligro: dataRiesgos[i][2] || '', severidad: dataRiesgos[i][3] || '',
-          probabilidad: dataRiesgos[i][4] || '', inherente: dataRiesgos[i][5] || '',
-          jerarquia: dataRiesgos[i][6] || '', controles: dataRiesgos[i][7] || '',
-          residual: dataRiesgos[i][8] || ''
+          peligro: dataRiesgos[i][2] || '', 
+          observacion: dataRiesgos[i][3] || '',
+          severidad: dataRiesgos[i][4] || '',
+          probabilidad: dataRiesgos[i][5] || '', 
+          inherente: dataRiesgos[i][6] || '',
+          jerarquia: dataRiesgos[i][7] || '', 
+          controles: dataRiesgos[i][8] || '',
+          residual: dataRiesgos[i][9] || ''
         });
       }
     }
@@ -75,39 +79,29 @@ function generarPDF_PT(idPT, filaMaestro) {
     // Firma del analista SST
     reemplazar(body, '<<Firma de Analista>>', datos[27] ? '✓ Firmado digitalmente' : '—');
 
-    // ===== PERSONAL EJECUTANTE (slots 1 y 2) =====
+    // Personal Ejecutante 1 y 2
     let t1 = trabajadores[0] || {};
     let t2 = trabajadores[1] || {};
     reemplazar(body, '<<Personal Ejecutante 1>>', t1.nombre || '—');
     reemplazar(body, '<<Cédula Personal Ejecutante 1>>', t1.cedula || '—');
     reemplazar(body, '<<Cargo Personal Ejecutante 1>>', t1.cargo || '—');
-    reemplazarFirma(body, '<<Firma de Personal Ejecutante 1>>', t1.firmaBase64);
+    reemplazar(body, '<<Firma de Personal Ejecutante 1>>', t1.urlFirma ? 'Ver firma: ' + t1.urlFirma : '—');
     reemplazar(body, '<<Personal Ejecutante 2>>', t2.nombre || '—');
     reemplazar(body, '<<Cédula Personal Ejecutante 2>>', t2.cedula || '—');
     reemplazar(body, '<<Cargo Personal Ejecutante 2>>', t2.cargo || '—');
-    reemplazarFirma(body, '<<Firma de Personal Ejecutante 2>>', t2.firmaBase64);
-
-    // Foto del área
-    reemplazar(body, '<<Foto del Área/Equipo donde se ejecutara el trabajo>>', datos[11] ? 'Ver foto: ' + datos[11] : 'No adjunta');
-
-    // ===== DETALLE DE ACTIVIDAD =====
-    reemplazar(body, '<<Descripción de la Actividad>>', datos[18]);
-    reemplazarEspecial(body, '<<¿Es de alto riesgo?>>', datos[19]);
-    reemplazar(body, '<<Tipo de Trabajo de Alto Riesgo>>', datos[20] || 'N/A');
-    reemplazar(body, '<<Tareas Principales>>', datos[21]);
-    reemplazar(body, '<<Equipos/Herramientas>>', datos[22]);
+    reemplazar(body, '<<Firma de Personal Ejecutante 2>>', t2.urlFirma ? 'Ver firma: ' + t2.urlFirma : '—');
 
     // Riesgos (slots 1 y 2)
     let r1 = riesgos[0] || {};
     let r2 = riesgos[1] || {};
-    reemplazar(body, '<<Peligro Identificado 1>>', r1.peligro || '—');
+    reemplazar(body, '<<Peligro Identificado 1>>', (r1.peligro + ' - ' + r1.observacion).trim() || '—');
     reemplazar(body, '<<Severidad 1>>', r1.severidad || '—');
     reemplazar(body, '<<Probabilidad 1>>', r1.probabilidad || '—');
     reemplazar(body, '<<Riesgo Inherente 1>>', r1.inherente ? r1.inherente.toString() : '—');
     reemplazar(body, '<<Jerarquía de Control 1>>', r1.jerarquia || '—');
     reemplazar(body, '<<Controles Aplicados 1>>', r1.controles || '—');
     reemplazar(body, '<<Riesgo Residual 1>>', r1.residual ? r1.residual.toString() : '—');
-    reemplazar(body, '<<Peligro Identificado 2>>', r2.peligro || '—');
+    reemplazar(body, '<<Peligro Identificado 2>>', (r2.peligro + ' - ' + r2.observacion).trim() || '—');
     reemplazar(body, '<<Severidad 2>>', r2.severidad || '—');
     reemplazar(body, '<<Probabilidad 2>>', r2.probabilidad || '—');
     reemplazar(body, '<<Riesgo Inherente 2>>', r2.inherente ? r2.inherente.toString() : '—');

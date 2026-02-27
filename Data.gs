@@ -36,7 +36,9 @@ function obtenerColaboradoresBuk() {
 // ===================== ROLES Y CORREOS =====================
 
 function getCorreoActual() {
-  return Session.getActiveUser().getEmail() || '';
+  const email = Session.getActiveUser().getEmail() || '';
+  const auth = validarAcceso(email);
+  return { email: email, auth: auth };
 }
 
 function obtenerCorreoRol(rol) {
@@ -82,6 +84,38 @@ function guardarFirmaBanco(correo, nombre, firmaBase64) {
   // Si no existe, agregar fila
   hBanco.appendRow([correo.toLowerCase(), nombre || 'N/A', firmaBase64, new Date()]);
   return true;
+}
+
+// ===================== AUTENTICACIÓN Y ACCESOS =====================
+
+function validarAcceso(correo) {
+  if (!correo) return { autorizado: false, motivo: "Correo no detectado." };
+  let lcorreo = correo.toLowerCase();
+
+  // 1. Validar Internos (Alfonzo Rivas)
+  if (lcorreo.endsWith('@alfonzorivas.com')) {
+    return { autorizado: true, tipo: 'Interno', empresa: 'Alfonzo Rivas' };
+  }
+
+  // 2. Validar Externos (Contratistas pre-registrados)
+  const ss = conectarDB();
+  let hojaContratistas = ss.getSheetByName('Config_Contratistas');
+  
+  // Si la hoja no existe aún, la ignoramos o bloqueamos por seguridad.
+  if(!hojaContratistas) {
+    return { autorizado: false, motivo: "No se encontró el registro de contratistas válidos." };
+  }
+
+  // Buscar el correo en O(1) usando TextFinder
+  const match = buscarFilaPorTokenO1('Config_Contratistas', lcorreo);
+  
+  // Asumiendo Columna 1 = Correo, Columna 2 = Empresa
+  if (match && match.vals[0] && match.vals[0].toString().toLowerCase() === lcorreo) {
+    return { autorizado: true, tipo: 'Contratista', empresa: match.vals[1] || 'Contratista Externa' };
+  }
+
+  // Rechazo por defecto
+  return { autorizado: false, motivo: "Acceso denegado. Correo externo no registrado." };
 }
 
 // ===================== CREAR NUEVO PERMISO (Módulos 1-3) =====================
@@ -146,10 +180,16 @@ function guardarNuevoPT(datos) {
     // Guardar trabajadores
     const hTrab = ss.getSheetByName('PT_Trabajadores');
     if (datos.trabajadores && datos.trabajadores.length > 0) {
-      let trF = datos.trabajadores.map((t, i) => [
-        `${idPT}-T${i+1}`, idPT, t.nombre, t.cedula, t.cargo,
-        '', '', '', '', '', '', ''
-      ]);
+      let trF = datos.trabajadores.map((t, i) => {
+        let urlFirma = '';
+        if (t.firma && t.firma.startsWith('data:image')) {
+          urlFirma = subirFirmaTrabajador(t.firma, idPT, i + 1);
+        }
+        return [
+          `${idPT}-T${i+1}`, idPT, t.nombre, t.cedula, t.cargo,
+          urlFirma, '', '', '', '', '', ''
+        ];
+      });
       hTrab.getRange(hTrab.getLastRow() + 1, 1, trF.length, trF[0].length).setValues(trF);
     }
 
@@ -160,10 +200,10 @@ function guardarNuevoPT(datos) {
         let severidadNum = parseInt(r.severidad) || 0;
         let probabilidadNum = parseInt(r.probabilidad) || 0;
         let inherente = severidadNum * probabilidadNum;
-        let jerarquiaNum = parseInt(r.jerarquia) || 0;
-        let residual = Math.max(1, inherente - jerarquiaNum);
+        let jerarquiaNum = parseInt(r.jerarquia) || 1; 
+        let residual = Math.ceil(inherente / jerarquiaNum);
         return [
-          `${idPT}-R${i+1}`, idPT, r.peligro, r.severidad,
+          `${idPT}-R${i+1}`, idPT, r.peligro, r.observacion, r.severidad,
           r.probabilidad, inherente, r.jerarquia, r.controles, residual
         ];
       });
@@ -173,9 +213,10 @@ function guardarNuevoPT(datos) {
     // Enviar notificación
     let urlBase = ScriptApp.getService().getUrl();
     if(requiereMedico) {
-      enviarCorreoNotificacion(obtenerCorreoRol('Medico') || CONFIG.EMAIL_PRUEBA, idPT,
+      let correoMed = CONFIG.MEDICOS[datos.localidad] || obtenerCorreoRol('Medico') || CONFIG.EMAIL_PRUEBA;
+      enviarCorreoNotificacion(correoMed, idPT,
         "Evaluación Médica Requerida",
-        "Se ha registrado un trabajo de Alto Riesgo. Requiere validación médica antes de su aprobación.",
+        "Se ha registrado un trabajo de Alto Riesgo (" + datos.tipoRiesgo + "). Requiere validación médica antes de su aprobación.",
         `${urlBase}?vista=medico&token=${tokenMedico}`, "Ir a Módulo Médico"
       );
     } else {
@@ -196,6 +237,14 @@ function guardarNuevoPT(datos) {
 // ===================== SUBIR FOTO AL DRIVE =====================
 
 function subirFotoArea(base64Data, idPT) {
+  return subirArchivoDrive(base64Data, `foto_area_${idPT}.png`);
+}
+
+function subirFirmaTrabajador(base64Data, idPT, index) {
+  return subirArchivoDrive(base64Data, `firma_${idPT}_T${index}.png`);
+}
+
+function subirArchivoDrive(base64Data, nombreArchivo) {
   try {
     let contentType = 'image/png';
     let b64 = base64Data;
@@ -205,12 +254,12 @@ function subirFotoArea(base64Data, idPT) {
       if (match) contentType = match[1];
       b64 = parts[1];
     }
-    let blob = Utilities.newBlob(Utilities.base64Decode(b64), contentType, `foto_area_${idPT}.png`);
+    let blob = Utilities.newBlob(Utilities.base64Decode(b64), contentType, nombreArchivo);
     let carpetaRaiz = DriveApp.getFolderById(CONFIG.FOLDER_RAIZ_ID);
     let archivo = carpetaRaiz.createFile(blob);
     return archivo.getUrl();
   } catch(e) {
-    Logger.log('Error subiendo foto: ' + e.message);
+    Logger.log('Error subiendo archivo a Drive: ' + e.message);
     return '';
   }
 }
@@ -389,7 +438,7 @@ function guardarAprobacionSecuencial(tokenActual, firmaBase64) {
       else if(!fSSA) {
         hM.getRange(fila, 31).setValue(firmaBase64); // Firma SSA
         hM.getRange(fila, 32).setValue(new Date()); // Fecha Aprobación Real
-        hM.getRange(fila, 3).setValue('Permiso Activo');
+        hM.getRange(fila, 3).setValue('Activo');
         hM.getRange(fila, 40).setValue(''); // Limpiar token de aprobación ya finalizado
 
         // Generar tokens de vida activa: Auditoría y Cierre

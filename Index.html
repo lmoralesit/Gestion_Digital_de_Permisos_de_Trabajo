@@ -97,26 +97,15 @@
                     <th>Nombre</th>
                     <th>Cédula</th>
                     <th>Cargo</th>
-                    <th class="text-center" style="width:100px">Firma</th>
+                    <th class="text-center" style="width:150px">Firma (Adjuntar) *</th>
                     <th class="text-center" style="width:42px"></th>
                   </tr>
                 </thead>
                 <tbody id="tbodyTrab">
-                  <tr>
-                    <td><input type="text" class="form-control form-control-sm t-nombre" required></td>
-                    <td><input type="text" class="form-control form-control-sm t-cedula" required
-                        onchange="vBtnFirma(this)"></td>
-                    <td><input type="text" class="form-control form-control-sm t-cargo"></td>
-                    <td class="text-center">
-                      <button type="button" class="btn btn-sm btn-outline-primary btn-firmar-trab"
-                        onclick="abrirModalFirma(this)" disabled><i class="bi bi-pen"></i></button>
-                      <input type="hidden" class="t-firma-base64">
-                    </td>
-                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm"
-                        onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td>
-                  </tr>
                 </tbody>
               </table>
+              <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle"></i> El Analista SST se agrega
+                automáticamente como ejecutor.</small>
             </div>
           </div>
           <div class="mt-4 text-end"><button type="button" class="btn btn-ptd" onclick="nav(2)">Continuar <i
@@ -258,23 +247,62 @@
     let conf = {}, buk = [];
     let contadorRiesgos = 0;
     const TOTAL_STEPS = 5;
-    let filaTrabajadorActiva = null; // Para saber a qué fila asignar la firma del modal
 
     window.onload = () => {
-      // 1. Obtener correo
       google.script.run
-        .withSuccessHandler(email => { document.getElementById('correoLogin').value = email || ''; })
+        .withSuccessHandler(res => {
+          document.getElementById('correoLogin').value = res.email || '';
+
+          // Re-intentar inicialización si el script no ha cargado
+          let intentos = 0;
+          function intentarInit() {
+            if (typeof inicializarFirmaWidget === 'function') {
+              inicializarFirmaWidget('AnalistaSST', res.email, res.auth.tipo);
+            } else if (intentos < 10) {
+              intentos++;
+              setTimeout(intentarInit, 500);
+            }
+          }
+          intentarInit();
+        })
         .getCorreoActual();
 
-      // 2. Inicializar Widget del Analista (Step 5)
-      setTimeout(() => {
-        inicializarFirmaWidget('AnalistaSST', document.getElementById('correoLogin').value);
-      }, 1500);
-
-      // 3. Inicializar listas y base de datos
       google.script.run.withSuccessHandler(r => { conf = r; inicializarListas(); }).withFailureHandler(e => alert('Error: ' + e.message)).obtenerListasConfig();
-      google.script.run.withSuccessHandler(r => { buk = r; inicializarBuk(); }).obtenerColaboradoresBuk();
+      google.script.run.withSuccessHandler(r => {
+        buk = r;
+        document.getElementById('listBuk').innerHTML = r.map(b => `<option value="${b.nombre}">`).join('');
+      }).obtenerColaboradoresBuk();
+
+      // Iniciar sync analista
+      setInterval(syncAnalista, 1000);
     };
+
+    function syncAnalista() {
+      let nom = document.getElementById('nombreSST').value.trim();
+      let ced = document.getElementById('cedulaSST').value.trim();
+      let tbody = document.getElementById('tbodyTrab');
+      let rowAnalista = Array.from(tbody.rows).find(r => r.dataset.analista === "true");
+
+      if (nom && ced) {
+        if (!rowAnalista) {
+          let tr = document.createElement('tr');
+          tr.dataset.analista = "true";
+          tr.innerHTML = `
+            <td><input type="text" class="form-control form-control-sm t-nombre" value="${nom}" readonly></td>
+            <td><input type="text" class="form-control form-control-sm t-cedula" value="${ced}" readonly></td>
+            <td><input type="text" class="form-control form-control-sm t-cargo" value="Analista SST" readonly></td>
+            <td><input type="file" class="form-control form-control-sm t-firma-file" accept="image/png, image/jpeg" required></td>
+            <td class="text-center"></td>
+          `;
+          tbody.prepend(tr);
+        } else {
+          rowAnalista.querySelector('.t-nombre').value = nom;
+          rowAnalista.querySelector('.t-cedula').value = ced;
+        }
+      } else if (rowAnalista) {
+        rowAnalista.remove();
+      }
+    }
 
     function inicializarListas() {
       document.getElementById('listEmpresas').innerHTML = conf.empresas.map(e => '<option value="' + e + '">').join('');
@@ -285,7 +313,7 @@
       document.getElementById('formPTD').classList.remove('hidden');
       agregarRiesgo();
     }
-    function inicializarBuk() { document.getElementById('listBuk').innerHTML = buk.map(b => '<option value="' + b.nombre + ' (' + b.email + ')">').join(''); }
+    function inicializarBuk() { document.getElementById('listBuk').innerHTML = buk.map(b => '<option value="' + b.nombre + '">').join(''); }
     function filtroSedes() { let l = document.getElementById('localidad').value; let s = document.getElementById('sede'); s.innerHTML = '<option value="">-- Sin sede --</option>'; conf.sedesMap.forEach(m => { let p = m.split('|'); if (p[0] === l) s.innerHTML += '<option>' + p[1] + '</option>'; }); }
 
     function nav(s) {
@@ -309,14 +337,20 @@
 
     function autoBuk(tipo) {
       let v = document.getElementById(tipo === 'solic' ? 'solic' : 'dueno').value;
-      let f = buk.find(b => b.nombre + ' (' + b.email + ')' === v);
-      if (tipo === 'solic') { document.getElementById('procesoSolicitante').value = f ? f.proceso : ''; document.getElementById('deptoSolicitante').value = f ? f.departamento : ''; }
-      else { document.getElementById('procesoDueno').value = f ? f.proceso : ''; document.getElementById('deptoDueno').value = f ? f.departamento : ''; }
+      let f = buk.find(b => b.nombre === v);
+      if (tipo === 'solic') {
+        document.getElementById('procesoSolicitante').value = f ? f.proceso : '';
+        document.getElementById('deptoSolicitante').value = f ? f.departamento : '';
+      }
+      else {
+        document.getElementById('procesoDueno').value = f ? f.proceso : '';
+        document.getElementById('deptoDueno').value = f ? f.departamento : '';
+      }
     }
 
     function agregarTrabajador() {
       document.getElementById('tbodyTrab').insertAdjacentHTML('beforeend',
-        '<tr><td><input type="text" class="form-control form-control-sm t-nombre" required></td><td><input type="text" class="form-control form-control-sm t-cedula" required onchange="vBtnFirma(this)"></td><td><input type="text" class="form-control form-control-sm t-cargo"></td><td class="text-center"><button type="button" class="btn btn-sm btn-outline-primary btn-firmar-trab" onclick="abrirModalFirma(this)" disabled><i class="bi bi-pen"></i></button><input type="hidden" class="t-firma-base64"></td><td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td></tr>'
+        '<tr><td><input type="text" class="form-control form-control-sm t-nombre" required></td><td><input type="text" class="form-control form-control-sm t-cedula" required></td><td><input type="text" class="form-control form-control-sm t-cargo"></td><td class="text-center"><input type="file" class="form-control form-control-sm t-firma-file" accept="image/png, image/jpeg" required></td><td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)"><i class="bi bi-trash3"></i></button></td></tr>'
       );
     }
     function eliminarFila(b) { let tb = b.closest('tbody'); if (tb.rows.length > 1) b.closest('tr').remove(); else alert('Debe haber al menos un trabajador.'); }
@@ -378,43 +412,175 @@
 
     function agregarRiesgo() {
       contadorRiesgos++; let n = contadorRiesgos;
-      let op = s => conf[s] ? conf[s].map(x => '<option value="' + x + '">' + x + '</option>').join('') : '';
-      document.getElementById('contenedorRiesgos').insertAdjacentHTML('beforeend',
-        '<div class="riesgo-card" id="riesgo' + n + '"><div class="d-flex justify-content-between align-items-center mb-2"><span class="badge" style="background:var(--crimson)">Riesgo #' + n + '</span><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarRiesgo(' + n + ')"><i class="bi bi-x-circle"></i></button></div><div class="row g-2"><div class="col-md-6"><label class="small fw-semibold">Peligro *</label><select class="form-select form-select-sm r-peligro" title="Peligro"><option value="">-- Seleccione --</option>' + op('peligros') + '</select></div><div class="col-md-6"><label class="small fw-semibold">Jerarquía de Control *</label><select class="form-select form-select-sm r-jerarquia" title="Jerarquía"><option value="">-- Seleccione --</option>' + op('jerarquia') + '</select></div><div class="col-md-4"><label class="small fw-semibold">Severidad *</label><select class="form-select form-select-sm r-severidad" onchange="calcRI(this)" title="Severidad"><option value="">-- --</option>' + op('severidad') + '</select></div><div class="col-md-4"><label class="small fw-semibold">Probabilidad *</label><select class="form-select form-select-sm r-probabilidad" onchange="calcRI(this)" title="Probabilidad"><option value="">-- --</option>' + op('probabilidad') + '</select></div><div class="col-md-4"><label class="small fw-semibold">Riesgo Inherente</label><input type="text" class="form-control form-control-sm r-inherente" readonly placeholder="Auto"></div><div class="col-12"><label class="small fw-semibold">Controles Aplicados *</label><textarea class="form-control form-control-sm r-controles" rows="2" placeholder="Medidas preventivas..."></textarea></div></div></div>');
+      let op = s => conf[s] ? conf[s].map(x => {
+        let val = x.includes('(') ? x.split('(')[1].replace(')', '') : x;
+        return '<option value="' + val + '">' + x + '</option>';
+      }).join('') : '';
+
+      document.getElementById('contenedorRiesgos').insertAdjacentHTML('beforeend', `
+        <div class="riesgo-card" id="riesgo${n}">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge" style="background:var(--crimson)">Riesgo #${n}</span>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarRiesgo(${n})"><i class="bi bi-x-circle"></i></button>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="small fw-semibold">Identificación de Peligro *</label>
+              <select class="form-select form-select-sm r-peligro" title="Peligro"><option value="">-- Seleccione --</option>${op('peligros')}</select>
+            </div>
+            <div class="col-md-6">
+              <label class="small fw-semibold">Observación de Peligro *</label>
+              <input type="text" class="form-control form-control-sm r-obs" placeholder="Ej. Presencia de CO2" required>
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-semibold">Severidad *</label>
+              <select class="form-select form-select-sm r-severidad" onchange="calcRiesgos(this)" title="Severidad"><option value="">-- --</option>${op('severidad')}</select>
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-semibold">Probabilidad *</label>
+              <select class="form-select form-select-sm r-probabilidad" onchange="calcRiesgos(this)" title="Probabilidad"><option value="">-- --</option>${op('probabilidad')}</select>
+            </div>
+            <div class="col-md-4">
+              <label class="small fw-semibold">Riesgo Inherente</label>
+              <input type="text" class="form-control form-control-sm r-inherente text-center fw-bold" readonly placeholder="Auto">
+            </div>
+            <div class="col-md-6">
+              <label class="small fw-semibold">Jerarquía de Controles *</label>
+              <select class="form-select form-select-sm r-jerarquia" onchange="calcRiesgos(this)" title="Jerarquía"><option value="">-- Seleccione --</option>${op('jerarquia')}</select>
+            </div>
+            <div class="col-md-6">
+              <label class="small fw-semibold">Riesgo Residual</label>
+              <input type="text" class="form-control form-control-sm r-residual text-center fw-bold" readonly placeholder="Auto">
+            </div>
+            <div class="col-12">
+              <label class="small fw-semibold">Controles Aplicados *</label>
+              <textarea class="form-control form-control-sm r-controles" rows="2" placeholder="Describa las medidas..."></textarea>
+            </div>
+          </div>
+        </div>
+      `);
     }
     function eliminarRiesgo(n) { let c = document.getElementById('contenedorRiesgos'); if (c.children.length > 1) document.getElementById('riesgo' + n).remove(); else alert('Mínimo un riesgo.'); }
-    function calcRI(sel) { let card = sel.closest('.riesgo-card'); let s = card.querySelector('.r-severidad').value; let p = card.querySelector('.r-probabilidad').value; if (s && p) { let sv = parseInt(s) || 0; let pv = parseInt(p) || 0; let ri = sv * pv; let nv = ri <= 2 ? 'Bajo' : ri <= 6 ? 'Medio' : ri <= 9 ? 'Alto' : 'Crítico'; card.querySelector('.r-inherente').value = ri + ' (' + nv + ')'; } }
 
-    function guardar() {
+    function calcRiesgos(el) {
+      let card = el.closest('.riesgo-card');
+      let s = parseInt(card.querySelector('.r-severidad').value) || 0;
+      let p = parseInt(card.querySelector('.r-probabilidad').value) || 0;
+      let j = parseInt(card.querySelector('.r-jerarquia').value) || 1;
+
+      let ri = s * p;
+      let rr = Math.ceil(ri / j);
+
+      card.querySelector('.r-inherente').value = ri;
+      card.querySelector('.r-residual').value = rr;
+
+      // Colores visuales
+      card.querySelector('.r-residual').style.backgroundColor = rr > 4 ? '#ffebee' : '#e8f5e9';
+      card.querySelector('.r-residual').style.color = rr > 4 ? '#c62828' : '#2e7d32';
+    }
+
+    async function guardar() {
       // 1. Validar Firma Analista
       let resFirmaSST = obtenerResultadoFirmaWidget('AnalistaSST');
       if (resFirmaSST.error) { alert('SST: ' + resFirmaSST.error); nav(5); return; }
 
-      // 2. Validar Firmas Trabajadores
+      // 2. Validar y Procesar Firmas Trabajadores
       let trabajadores = [];
       for (let f of document.getElementById('tbodyTrab').rows) {
         let nom = f.querySelector('.t-nombre').value.trim();
         let ced = f.querySelector('.t-cedula').value.trim();
-        let fir = f.querySelector('.t-firma-base64').value;
-        if (!fir) { alert(`Falta la firma del trabajador ${nom} (${ced}) en el Módulo 1.`); nav(1); return; }
-        trabajadores.push({ nombre: nom, cedula: ced, cargo: f.querySelector('.t-cargo').value.trim(), firma: fir });
+        let file = f.querySelector('.t-firma-file');
+
+        if (!file.files || !file.files[0]) {
+          alert(`Falta la firma adjunta del trabajador ${nom} (${ced}).`);
+          nav(1); return;
+        }
+
+        let base64 = await new Promise(res => {
+          let r = new FileReader();
+          r.onload = e => res(e.target.result);
+          r.readAsDataURL(file.files[0]);
+        });
+
+        trabajadores.push({ nombre: nom, cedula: ced, cargo: f.querySelector('.t-cargo').value.trim(), firma: base64 });
       }
 
-      let btn = document.getElementById('btnGuardar'); btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...'; btn.disabled = true;
-      let riesgos = []; for (let c of document.querySelectorAll('.riesgo-card')) { riesgos.push({ peligro: c.querySelector('.r-peligro').value, severidad: c.querySelector('.r-severidad').value, probabilidad: c.querySelector('.r-probabilidad').value, jerarquia: c.querySelector('.r-jerarquia').value, controles: c.querySelector('.r-controles').value.trim() }); }
-      let fotoPromise = new Promise(resolve => { let fi = document.getElementById('fotoArea'); if (fi.files && fi.files[0]) { let r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(fi.files[0]); } else resolve(''); });
+      let btn = document.getElementById('btnGuardar');
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+      btn.disabled = true;
+
+      let riesgos = [];
+      for (let c of document.querySelectorAll('.riesgo-card')) {
+        riesgos.push({
+          peligro: c.querySelector('.r-peligro').value,
+          observacion: c.querySelector('.r-obs').value.trim(),
+          severidad: c.querySelector('.r-severidad').value,
+          probabilidad: c.querySelector('.r-probabilidad').value,
+          jerarquia: c.querySelector('.r-jerarquia').value,
+          controles: c.querySelector('.r-controles').value.trim()
+        });
+      }
+
+      let fotoPromise = new Promise(resolve => {
+        let fi = document.getElementById('fotoArea');
+        if (fi.files && fi.files[0]) {
+          let r = new FileReader();
+          r.onload = e => resolve(e.target.result);
+          r.readAsDataURL(fi.files[0]);
+        } else resolve('');
+      });
 
       fotoPromise.then(foto64 => {
-        let tipoSel = Array.from(document.getElementById('tipoRiesgo').selectedOptions).map(o => o.value).join(', ');
-        if (document.getElementById('altoRiesgo').value === 'NO') tipoSel = 'N/A';
+        let d = {
+          correoLogin: document.getElementById('correoLogin').value.trim(),
+          empresa: document.getElementById('empresa').value.trim(),
+          nombreSST: document.getElementById('nombreSST').value.trim(),
+          cedulaSST: document.getElementById('cedulaSST').value.trim(),
+          unidadNegocio: document.getElementById('unidadNegocio').value,
+          localidad: document.getElementById('localidad').value,
+          sede: document.getElementById('sede').value,
+          areaEquipo: document.getElementById('areaEquipo').value.trim(),
+          fotoAreaBase64: foto64,
+          solicitanteInterno: document.getElementById('solic').value,
+          deptoSolicitante: document.getElementById('deptoSolicitante').value,
+          procesoSolicitante: document.getElementById('procesoSolicitante').value,
+          duenoArea: document.getElementById('dueno').value,
+          deptoDueno: document.getElementById('deptoDueno').value,
+          procesoDueno: document.getElementById('procesoDueno').value,
+          descripcion: document.getElementById('desc').value.trim(),
+          tareasPrincipales: document.getElementById('tareasPrincipales').value.trim(),
+          equiposHerramientas: document.getElementById('equiposHerramientas').value.trim(),
+          altoRiesgo: document.getElementById('altoRiesgo').value,
+          tipoRiesgo: Array.from(document.getElementById('tipoRiesgo').selectedOptions).map(o => o.value).join(', '),
+          gases: {
+            o2: document.getElementById('gasO2').value || '',
+            lel: document.getElementById('gasLEL').value || '',
+            co: document.getElementById('gasCO').value || '',
+            h2s: document.getElementById('gasH2S').value || ''
+          },
+          firmaBase64: resFirmaSST.base64,
+          trabajadores: trabajadores,
+          riesgos: riesgos
+        };
 
-        // Solicitar guardar la firma en banco si checked
-        let correoSST = document.getElementById('correoLogin').value.trim();
-        let nombreSST = document.getElementById('nombreSST').value.trim();
-        if (resFirmaSST.guardarEnBanco) { google.script.run.guardarFirmaBanco(correoSST, nombreSST, resFirmaSST.base64); }
-
-        let d = { correoLogin: correoSST, empresa: document.getElementById('empresa').value.trim(), nombreSST: nombreSST, cedulaSST: document.getElementById('cedulaSST').value.trim(), unidadNegocio: document.getElementById('unidadNegocio').value, localidad: document.getElementById('localidad').value, sede: document.getElementById('sede').value, areaEquipo: document.getElementById('areaEquipo').value.trim(), fotoAreaBase64: foto64, solicitanteInterno: document.getElementById('solic').value, deptoSolicitante: document.getElementById('deptoSolicitante').value, procesoSolicitante: document.getElementById('procesoSolicitante').value, duenoArea: document.getElementById('dueno').value, deptoDueno: document.getElementById('deptoDueno').value, procesoDueno: document.getElementById('procesoDueno').value, descripcion: document.getElementById('desc').value.trim(), tareasPrincipales: document.getElementById('tareasPrincipales').value.trim(), equiposHerramientas: document.getElementById('equiposHerramientas').value.trim(), altoRiesgo: document.getElementById('altoRiesgo').value, tipoRiesgo: tipoSel, gases: { o2: document.getElementById('gasO2').value || '', lel: document.getElementById('gasLEL').value || '', co: document.getElementById('gasCO').value || '', h2s: document.getElementById('gasH2S').value || '' }, firmaBase64: resFirmaSST.base64, trabajadores: trabajadores, riesgos: riesgos };
-        google.script.run.withSuccessHandler(r => { if (r.success) { document.querySelectorAll('[id^="step"]').forEach(e => e.classList.add('hidden')); document.getElementById('stepResult').classList.remove('hidden'); document.getElementById('stepResult').innerHTML = '<div class="success-screen"><div class="icon"><i class="bi bi-check-circle-fill"></i></div><h4>¡Permiso Registrado!</h4><p class="pt-id">' + r.idPT + '</p><p class="text-muted">' + (r.requiereMedico ? 'Enviado al Servicio Médico para validación.' : 'Enviado a los Validadores para aprobación.') + '</p><div class="info-bar mt-3"><small>Se ha notificado por correo a los responsables del siguiente paso.</small></div></div>'; } else { alert('Error: ' + r.message); btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD'; btn.disabled = false; } }).withFailureHandler(e => { alert('Error: ' + e.message); btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD'; btn.disabled = false; }).guardarNuevoPT(d);
+        google.script.run
+          .withSuccessHandler(r => {
+            if (r.success) {
+              document.querySelectorAll('[id^="step"]').forEach(e => e.classList.add('hidden'));
+              document.getElementById('stepResult').classList.remove('hidden');
+              document.getElementById('stepResult').innerHTML = '<div class="success-screen"><div class="icon"><i class="bi bi-check-circle-fill"></i></div><h4>¡Permiso Registrado!</h4><p class="pt-id">' + r.idPT + '</p><p class="text-muted">' + (r.requiereMedico ? 'Enviado al Servicio Médico para validación.' : 'Enviado a los Validadores para aprobación.') + '</p><div class="info-bar mt-3"><small>Se ha notificado por correo a los responsables del siguiente paso.</small></div></div>';
+            } else {
+              alert('Error: ' + r.message);
+              btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD';
+              btn.disabled = false;
+            }
+          })
+          .withFailureHandler(e => {
+            alert('Error: ' + e.message);
+            btn.innerHTML = '<i class="bi bi-send-check"></i> Solicitar Permiso PTD';
+            btn.disabled = false;
+          })
+          .guardarNuevoPT(d);
       });
     }
   </script>
