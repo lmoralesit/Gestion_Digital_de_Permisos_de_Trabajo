@@ -392,11 +392,11 @@ function obtenerDatosAprobacion(token) {
         tipoRiesgo: dataI[20],
         tareas: dataI[21],
         equipos: dataI[22],
-        solicitanteNom: dataI[12], // Nombre
-        solicitanteDoc: dataI[11] || '', // Correo (Nota: columna 12 es nombre, pero correo lo guardamos en otra parte ahora. Ajustaremos según Data.gs)
+        solicitanteNom: dataI[12],
+        solicitanteDoc: extraerCorreoDeString(dataI[12], 'Solicitante'),
         duenoNom: dataI[15],
-        duenoDoc: dataI[14] || '',
-        ssaDoc: dataI[5] || '', // Correo del analista inicial
+        duenoDoc: extraerCorreoDeString(dataI[15], 'Dueno'),
+        ssaDoc: dataI[3] || '', // Correo del analista inicial (Col D)
         trabajadores: trab
       };
   }
@@ -431,7 +431,7 @@ function guardarAprobacionSecuencial(tokenActual, firmaBase64) {
         // Generar token para SSA
         let newToken = Utilities.getUuid();
         hM.getRange(fila, 40).setValue(newToken);
-        let correoSiguiente = matchValsForDueño[5] || obtenerCorreoRol('SST'); // Correo del analista original o rol general SST
+        let correoSiguiente = matchValsForDueño[3] || obtenerCorreoRol('SST'); // Correo del analista original (Col D)
         enviarCorreoNotificacion(correoSiguiente, idPT, "Aprobación Requerida (SSA)", "El Solicitante y Dueño han firmado. Falta la firma de Seguridad y Salud (SSA) para activar el PT.", `${urlBase}?vista=aprobacion&token=${newToken}`, "Ir a Firmar");
         return { success: true, ptActivo: false, idPT: idPT };
       }
@@ -451,7 +451,7 @@ function guardarAprobacionSecuencial(tokenActual, firmaBase64) {
         generarPDF_PT(idPT, fila);
 
         // Notificar activación y enviar URL de auditoría al SSA y cierre al Contratista
-        enviarCorreoNotificacion(matchValsForDueño[5] || obtenerCorreoRol('SST'), idPT, "Permiso de Trabajo ACTIVO - Auditoría", "El PT ha sido aprobado por todos los actores. Puede auditar con este enlace.", `${urlBase}?vista=auditoria&token=${tokenAud}`, "Ir a Auditoría");
+        enviarCorreoNotificacion(matchValsForDueño[3] || obtenerCorreoRol('SST'), idPT, "Permiso de Trabajo ACTIVO - Auditoría", "El PT ha sido aprobado por todos los actores. Puede auditar con este enlace.", `${urlBase}?vista=auditoria&token=${tokenAud}`, "Ir a Auditoría");
         enviarCorreoNotificacion(matchValsForDueño[3] || obtenerCorreoRol('Supervisor'), idPT, "Permiso de Trabajo ACTIVO - Cierre", "Al finalizar la jornada laboral o el trabajo, por favor inicie el cierre del formulario.", `${urlBase}?vista=cierre&token=${tokenCierre}`, "Ir a Cierre");
 
       }
@@ -562,10 +562,10 @@ function obtenerDatosCierre(token) {
         // Datos para identificar al firmante
         estatusCierreActual: data[i][33], // Si fue Culminado, Suspendido etc.
         contratistaNom: data[i][4],
-        contratistaDoc: data[i][3], // correo contratista original
+        contratistaDoc: data[i][3], // correo contratista original (Col D)
         solicitanteNom: data[i][12],
-        solicitanteDoc: data[i][11] || obtenerCorreoRol('Solicitante') || '',
-        ssaDoc: data[i][5] || obtenerCorreoRol('SST') || ''
+        solicitanteDoc: extraerCorreoDeString(data[i][12], 'Solicitante'),
+        ssaDoc: data[i][3] || obtenerCorreoRol('SST') || ''
       };
     }
   }
@@ -593,7 +593,7 @@ function guardarCierreSecuencial(tokenActual, firmaBase64, estatusCierreSelect) 
           
           let newToken = Utilities.getUuid();
           hM.getRange(fila, 42).setValue(newToken);
-          let correoSig = dataM_i[11] || obtenerCorreoRol('Solicitante');
+          let correoSig = extraerCorreoDeString(dataM_i[12], 'Solicitante');
           enviarCorreoNotificacion(correoSig, idPT, "Cierre Requerido (Solicitante)", "El contratista ha finalizado labores y firmado retiro. Confirme recepción de área.", `${urlBase}?vista=cierre&token=${newToken}`, "Ir a Cierre");
           return { success: true, ptCerrado: false, idPT: idPT };
         }
@@ -602,7 +602,7 @@ function guardarCierreSecuencial(tokenActual, firmaBase64, estatusCierreSelect) 
           
           let newToken = Utilities.getUuid();
           hM.getRange(fila, 42).setValue(newToken);
-          let correoSig = dataM_i[5] || obtenerCorreoRol('SST');
+          let correoSig = dataM_i[3] || obtenerCorreoRol('SST');
           enviarCorreoNotificacion(correoSig, idPT, "Cierre Requerido (SSA)", "El Solicitante aprobó la recepción del área. Requiere firma de cierre administrativo SSA.", `${urlBase}?vista=cierre&token=${newToken}`, "Ir a Cierre");
           return { success: true, ptCerrado: false, idPT: idPT };
         }

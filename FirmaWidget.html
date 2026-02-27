@@ -96,15 +96,20 @@
       return;
     }
 
-    // Restricciones para usuarios externos (Contratistas)
-    if (tipoUsuario === 'Contratista') {
-      document.querySelector('.tab-dibujar-li-' + idPad).classList.add('d-none');
-      document.querySelector('.tab-banco-li-' + idPad).classList.add('d-none');
+    // Restricciones para usuarios externos (Contratistas/Trabajadores)
+    if (tipoUsuario === 'Contratista' || tipoUsuario === 'Externo') {
+      const tabDib = document.querySelector('.tab-dibujar-li-' + idPad);
+      const tabBan = document.querySelector('.tab-banco-li-' + idPad);
+      if (tabDib) tabDib.classList.add('d-none');
+      if (tabBan) tabBan.classList.add('d-none');
+
       const tabAdj = document.getElementById('tab-adjuntar-' + idPad);
       if (tabAdj) {
-        bootstrap.Tab.getOrCreateInstance(tabAdj).show();
-        firmasRegistradas[idPad] = firmasRegistradas[idPad] || {};
-        firmasRegistradas[idPad].metodoActivo = 'adjuntar';
+        setTimeout(() => {
+          const t = bootstrap.Tab.getOrCreateInstance(tabAdj);
+          t.show();
+          if (firmasRegistradas[idPad]) firmasRegistradas[idPad].metodoActivo = 'adjuntar';
+        }, 100);
       }
     }
 
@@ -117,19 +122,23 @@
     firmasRegistradas[idPad] = {
       pad: signaturePad,
       correo: correoUsuario,
-      metodoActivo: (tipoUsuario === 'Contratista') ? 'adjuntar' : 'dibujar' // dibujar, banco, adjuntar
+      metodoActivo: (tipoUsuario === 'Contratista' || tipoUsuario === 'Externo') ? 'adjuntar' : 'dibujar' // dibujar, banco, adjuntar
     };
 
     // Ajustar resolución del canvas para evitar desfase del puntero (Fix Bug)
     function resizeCanvas() {
-      const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      // Solo hacer el resize si el ancho es distinto a 0 (está visible)
       if (canvas.offsetWidth === 0) return;
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const isEmpty = signaturePad.isEmpty();
+      let data = null;
+      if (!isEmpty) data = signaturePad.toData();
 
       canvas.width = canvas.offsetWidth * ratio;
       canvas.height = canvas.offsetHeight * ratio;
       canvas.getContext("2d").scale(ratio, ratio);
-      signaturePad.clear();
+
+      signaturePad.clear(); // Limpiar para resetear escala interna
+      if (!isEmpty && data) signaturePad.fromData(data); // Restaurar si había algo
     }
 
     // Llamar al resize inicial y al cambiar tamaño de ventana
@@ -146,15 +155,34 @@
     // Resize forzado si está visible de una vez
     setTimeout(resizeCanvas, 300);
 
-    // Tab Listeners para gestionar el estado
-    document.getElementById('tab-dibujar-' + idPad).addEventListener('click', () => firmasRegistradas[idPad].metodoActivo = 'dibujar');
-    document.getElementById('tab-adjuntar-' + idPad).addEventListener('click', () => firmasRegistradas[idPad].metodoActivo = 'adjuntar');
-    document.getElementById('tab-banco-' + idPad).addEventListener('click', () => {
+    // Tab Listeners para gestionar el estado de forma más robusta usando eventos de Bootstrap
+    const bTabDib = document.getElementById('tab-dibujar-' + idPad);
+    const bTabAdj = document.getElementById('tab-adjuntar-' + idPad);
+    const bTabBan = document.getElementById('tab-banco-' + idPad);
+
+    const bs = (typeof bootstrap !== 'undefined') ? bootstrap : (window.bootstrap || null);
+
+    if (bTabDib) bTabDib.addEventListener('shown.bs.tab', () => {
+      firmasRegistradas[idPad].metodoActivo = 'dibujar';
+      resizeCanvas();
+    });
+    if (bTabAdj) bTabAdj.addEventListener('shown.bs.tab', () => firmasRegistradas[idPad].metodoActivo = 'adjuntar');
+    if (bTabBan) bTabBan.addEventListener('shown.bs.tab', () => {
       firmasRegistradas[idPad].metodoActivo = 'banco';
       if (!firmasRegistradas[idPad].buscadoEnBanco) {
         buscarFirmaBanco(idPad, correoUsuario);
       }
     });
+
+    // Fallback por si el evento shown no dispara (ej. click manual o touch)
+    if (bTabDib) bTabDib.addEventListener('click', () => {
+      firmasRegistradas[idPad].metodoActivo = 'dibujar';
+      setTimeout(resizeCanvas, 50);
+    });
+    if (bTabAdj) bTabAdj.addEventListener('click', () => firmasRegistradas[idPad].metodoActivo = 'adjuntar');
+    if (bTabBan) bTabBan.addEventListener('click', () => firmasRegistradas[idPad].metodoActivo = 'banco');
+
+    firmasRegistradas[idPad].resize = resizeCanvas;
 
     // Si viene en modal, el modal trigger debe ejecutar resizeCanvas también
     return signaturePad;
