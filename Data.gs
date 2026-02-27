@@ -205,56 +205,77 @@ function subirFotoArea(base64Data, idPT) {
 
 // ===================== MÓDULO 4: VALIDACIÓN MÉDICA =====================
 
-function obtenerDatosPorTokenMedico(token) {
-  const dataM = conectarDB().getSheetByName('PT_Maestro').getDataRange().getValues();
-  let idPT = null, datosPT = null;
-  for(let i = 1; i < dataM.length; i++) {
-    if(dataM[i][38] === token) {
-      idPT = dataM[i][0];
-      datosPT = { id: idPT, empresa: dataM[i][4], ubicacion: dataM[i][8] };
-      break;
-    }
-  }
-  if(!idPT) return { success: false, message: "Token inválido o expirado." };
+function obtenerDatosMedicos(token) {
+  const ss = conectarDB();
+  const hM = ss.getSheetByName('PT_Maestro');
 
-  const dataT = conectarDB().getSheetByName('PT_Trabajadores').getDataRange().getValues();
+  // ⚡ Optimización Bolt: Búsqueda indexada con TextFinder en lugar de loop O(n)
+  const range = hM.getRange(1, 39, hM.getLastRow()).createTextFinder(token).matchEntireCell(true).findNext();
+
+  if(!range) return { success: false, message: "Token inválido o expirado." };
+
+  const rowIndex = range.getRow();
+  const rowData = hM.getRange(rowIndex, 1, 1, 39).getValues()[0];
+  const idPT = rowData[0];
+
+  // Obtener trabajadores vinculados
+  const dataT = ss.getSheetByName('PT_Trabajadores').getDataRange().getValues();
   let trab = [];
   for(let i = 1; i < dataT.length; i++) {
-    if(dataT[i][1] === idPT) trab.push({ filaIndex: i + 1, nombre: dataT[i][2], cedula: dataT[i][3] });
+    // ⚡ Alineación Bolt: Usar 'fila' en lugar de 'filaIndex' para compatibilidad con frontend
+    if(dataT[i][1] === idPT) trab.push({ fila: i + 1, nombre: dataT[i][2], cedula: dataT[i][3] });
   }
-  return { success: true, pt: datosPT, trabajadores: trab };
+
+  // ⚡ Alineación Bolt: Estructura de respuesta compatible con VistaMedico.html
+  return {
+    success: true,
+    pt: idPT,
+    empresa: rowData[4],
+    tipoTrabajo: rowData[20],
+    ubicacion: rowData[8], // Restaurado para evitar regresiones
+    trabajadores: trab
+  };
 }
 
 function guardarEvaluacionMedica(evaluaciones, token, emailMedico) {
   const ss = conectarDB();
-  const hTrab = ss.getSheetByName('PT_Trabajadores');
-  evaluaciones.forEach(ev => {
-    hTrab.getRange(ev.fila, 7, 1, 6).setValues([
-      [ev.tension, ev.fc, ev.aptitud, ev.observacion, emailMedico, new Date()]
+
+  // ⚡ Optimización Bolt: Batch write para trabajadores (O(1) en lugar de O(n) llamadas)
+  if (evaluaciones && evaluaciones.length > 0) {
+    const hTrab = ss.getSheetByName('PT_Trabajadores');
+    const startRow = evaluaciones[0].fila;
+    const numRows = evaluaciones.length;
+
+    // Mapear datos para setValues (2D array)
+    const values = evaluaciones.map(ev => [
+      ev.tension, ev.fc, ev.aptitud, ev.observaciones || ev.observacion, emailMedico, new Date()
     ]);
-  });
+
+    hTrab.getRange(startRow, 7, numRows, 6).setValues(values);
+  }
 
   const hM = ss.getSheetByName('PT_Maestro');
-  const data = hM.getDataRange().getValues();
-  for(let i = 1; i < data.length; i++){
-    if(data[i][38] === token){
-      let newToken = Utilities.getUuid();
-      hM.getRange(i+1, 3).setValue('Pendiente Aprobaciones');
-      hM.getRange(i+1, 39).setValue(''); // limpiar token médico
-      hM.getRange(i+1, 40).setValue(newToken); // token aprobación
-      let idPT = data[i][0];
-      
-      let correoSol = extraerCorreoDeString(data[i][12], 'Solicitante');
-      
-      enviarCorreoNotificacion(correoSol, idPT,
-        "Aprobación Final de PT",
-        "El Servicio Médico ha validado a los trabajadores. El permiso requiere sus firmas finales.",
-        `${ScriptApp.getService().getUrl()}?vista=aprobacion&token=${newToken}`, "Ir a Firmar"
-      );
-      break;
-    }
+  // ⚡ Optimización Bolt: Búsqueda rápida de la fila del PT
+  const range = hM.getRange(1, 39, hM.getLastRow()).createTextFinder(token).matchEntireCell(true).findNext();
+
+  if(range){
+    const rowIndex = range.getRow();
+    const idPT = hM.getRange(rowIndex, 1).getValue();
+    const nombreSol = hM.getRange(rowIndex, 13).getValue();
+    const newToken = Utilities.getUuid();
+
+    // ⚡ Optimización Bolt: Batch update para columnas contiguas 39 y 40
+    hM.getRange(rowIndex, 3).setValue('Pendiente Aprobaciones');
+    hM.getRange(rowIndex, 39, 1, 2).setValues([['', newToken]]);
+
+    const correoSol = extraerCorreoDeString(nombreSol, 'Solicitante');
+    enviarCorreoNotificacion(correoSol, idPT,
+      "Aprobación Final de PT",
+      "El Servicio Médico ha validado a los trabajadores. El permiso requiere sus firmas finales.",
+      `${ScriptApp.getService().getUrl()}?vista=aprobacion&token=${newToken}`, "Ir a Firmar"
+    );
   }
-  return true;
+  return { success: true };
 }
 
 // ===================== MÓDULO 5: APROBACIÓN SECUENCIAL =====================
