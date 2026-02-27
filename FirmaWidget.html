@@ -96,8 +96,9 @@
       return;
     }
 
-    // Restricciones para usuarios externos (Contratistas/Trabajadores)
-    if (tipoUsuario === 'Contratista' || tipoUsuario === 'Externo') {
+    // Restricciones para usuarios internos/externos
+    if (tipoUsuario === 'Contratista') {
+      // Contratistas solo adjuntan (ej. por política de empresa)
       const tabDib = document.querySelector('.tab-dibujar-li-' + idPad);
       const tabBan = document.querySelector('.tab-banco-li-' + idPad);
       if (tabDib) tabDib.classList.add('d-none');
@@ -112,6 +113,7 @@
         }, 100);
       }
     }
+    // Trabajadores (tipo 'Externo') SI pueden dibujar y adjuntar
 
     // Crear instancia de SignaturePad
     const signaturePad = new SignaturePad(canvas, {
@@ -122,13 +124,15 @@
     firmasRegistradas[idPad] = {
       pad: signaturePad,
       correo: correoUsuario,
-      metodoActivo: (tipoUsuario === 'Contratista' || tipoUsuario === 'Externo') ? 'adjuntar' : 'dibujar' // dibujar, banco, adjuntar
+      metodoActivo: (tipoUsuario === 'Contratista') ? 'adjuntar' : 'dibujar'
     };
 
-    // Ajustar resolución del canvas para evitar desfase del puntero (Fix Bug)
+    // Ajustar resolución del canvas para evitar desfase del puntero
     function resizeCanvas() {
       if (canvas.offsetWidth === 0) return;
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+      // Guardar contenido si ya existe algo
       const isEmpty = signaturePad.isEmpty();
       let data = null;
       if (!isEmpty) data = signaturePad.toData();
@@ -137,8 +141,8 @@
       canvas.height = canvas.offsetHeight * ratio;
       canvas.getContext("2d").scale(ratio, ratio);
 
-      signaturePad.clear(); // Limpiar para resetear escala interna
-      if (!isEmpty && data) signaturePad.fromData(data); // Restaurar si había algo
+      signaturePad.clear();
+      if (!isEmpty && data) signaturePad.fromData(data);
     }
 
     // Llamar al resize inicial y al cambiar tamaño de ventana

@@ -368,16 +368,20 @@
     }
 
     function inicializarModulo5() {
-      // 1. Inicializar SST - Solo si no existe
-      if (!firmasRegistradas['AnalistaSST']) {
-        let intentos = 0;
-        function checkSST() {
-          if (typeof inicializarFirmaWidget === 'function') {
-            inicializarFirmaWidget('AnalistaSST', userSession.email, userSession.auth.tipo);
-          } else if (intentos < 10) { intentos++; setTimeout(checkSST, 300); }
-        }
-        checkSST();
+      // 1. Inicializar SST - Solo si no existe o forzar resize
+      let intentos = 0;
+      function checkSST() {
+        if (typeof inicializarFirmaWidget === 'function') {
+          inicializarFirmaWidget('AnalistaSST', userSession.email, userSession.auth.tipo);
+          // Forzar resize después de que el contenedor sea visible
+          setTimeout(() => {
+            if (firmasRegistradas['AnalistaSST'] && firmasRegistradas['AnalistaSST'].resize) {
+              firmasRegistradas['AnalistaSST'].resize();
+            }
+          }, 300);
+        } else if (intentos < 10) { intentos++; setTimeout(checkSST, 300); }
       }
+      checkSST();
 
       // 2. Generar lista de ejecutantes
       let container = document.getElementById('listaFirmasTrabajadores');
@@ -427,6 +431,14 @@
         limpiarFirma('TrabajadorModal');
         document.getElementById('chk-guardar-TrabajadorModal').checked = true;
         inicializarFirmaWidget('TrabajadorModal', ced, 'Externo');
+
+        // Forzar resize extra por seguridad tras un pequeño delay
+        setTimeout(() => {
+          if (firmasRegistradas['TrabajadorModal'] && firmasRegistradas['TrabajadorModal'].resize) {
+            firmasRegistradas['TrabajadorModal'].resize();
+          }
+        }, 150);
+
         modalEl.removeEventListener('shown.bs.modal', onShown);
       }, { once: true });
 
