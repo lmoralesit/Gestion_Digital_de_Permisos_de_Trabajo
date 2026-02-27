@@ -368,14 +368,16 @@
     }
 
     function inicializarModulo5() {
-      // 1. Inicializar SST - Con reintento por si el script tarda
-      let intentos = 0;
-      function checkSST() {
-        if (typeof inicializarFirmaWidget === 'function') {
-          inicializarFirmaWidget('AnalistaSST', userSession.email, userSession.auth.tipo);
-        } else if (intentos < 5) { intentos++; setTimeout(checkSST, 500); }
+      // 1. Inicializar SST - Solo si no existe
+      if (!firmasRegistradas['AnalistaSST']) {
+        let intentos = 0;
+        function checkSST() {
+          if (typeof inicializarFirmaWidget === 'function') {
+            inicializarFirmaWidget('AnalistaSST', userSession.email, userSession.auth.tipo);
+          } else if (intentos < 10) { intentos++; setTimeout(checkSST, 300); }
+        }
+        checkSST();
       }
-      checkSST();
 
       // 2. Generar lista de ejecutantes
       let container = document.getElementById('listaFirmasTrabajadores');
@@ -417,16 +419,18 @@
       document.getElementById('lblTrabNombre').innerText = nom;
       document.getElementById('lblTrabCedula').innerText = ced;
 
-      limpiarFirma('TrabajadorModal');
-      document.getElementById('chk-guardar-TrabajadorModal').checked = true;
+      const modalEl = document.getElementById('modalFirmaTrabajador');
+      const myModal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
-      let myModal = new bootstrap.Modal(document.getElementById('modalFirmaTrabajador'));
-      myModal.show();
-
-      setTimeout(() => {
-        // Para trabajadores no tenemos correo, pasamos su cédula como ID de sesión para el banco si aplica
+      // Listener para inicializar el widget solo cuando el modal sea visible (para que el canvas tenga tamaño)
+      modalEl.addEventListener('shown.bs.modal', function onShown() {
+        limpiarFirma('TrabajadorModal');
+        document.getElementById('chk-guardar-TrabajadorModal').checked = true;
         inicializarFirmaWidget('TrabajadorModal', ced, 'Externo');
-      }, 400);
+        modalEl.removeEventListener('shown.bs.modal', onShown);
+      }, { once: true });
+
+      myModal.show();
     }
 
     function confirmarFirmaModal() {
