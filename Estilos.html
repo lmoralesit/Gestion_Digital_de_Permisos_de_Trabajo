@@ -432,4 +432,126 @@
     .hidden {
         display: none !important;
     }
+
+    /* =========================================
+       GLASSMORPHISM, ANIMATIONS AND PREMIUM UI
+       ========================================= */
+    :root {
+      --primary-color: #0d6efd;
+      --secondary-color: #6c757d;
+      --success-color: #198754;
+      --danger-color: #dc3545;
+      --warning-color: #ffc107;
+      --info-color: #0dcaf0;
+      --light-color: #f8f9fa;
+      --dark-color: #212529;
+      --glass-bg: rgba(255, 255, 255, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.3);
+      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    }
+
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    /* Glass Panels */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      padding: 24px;
+      margin-bottom: 24px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2);
+    }
+
+    /* Navbar Premium */
+    .navbar {
+      background: rgba(255, 255, 255, 0.9) !important;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.4);
+    }
+    .navbar-brand {
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--primary-color) !important;
+    }
+
+    /* Micro Animations for Buttons */
+    .btn {
+      border-radius: 8px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      border-radius: 100%;
+      transform: scale(1, 1) translate(-50%);
+      transform-origin: 50% 50%;
+    }
+
+    .btn:active::after {
+      animation: ripple 0.6s ease-out;
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(0, 0); opacity: 0.5; }
+      100% { transform: scale(40, 40); opacity: 0; }
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Form Controls */
+    .form-control, .form-select {
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      padding: 0.6rem 1rem;
+      transition: all 0.2s;
+      background: rgba(255, 255, 255, 0.9);
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+      background: #fff;
+    }
+    
+    /* Stepper/Progress Premium */
+    .paso-header {
+      background: linear-gradient(to right, rgba(13, 110, 253, 0.05), transparent);
+      border-left: 4px solid var(--primary-color);
+      padding: 12px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 20px;
+    }
+    .paso-header h4 {
+      margin: 0;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
 </style>
