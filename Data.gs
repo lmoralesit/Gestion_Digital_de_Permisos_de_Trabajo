@@ -405,14 +405,12 @@ function guardarAprobacionSecuencial(tokenActual, firmaBase64) {
         enviarCorreoNotificacion(matchValsForDueño[5] || obtenerCorreoRol('SST'), idPT, "Permiso de Trabajo ACTIVO - Auditoría", "El PT ha sido aprobado por todos los actores. Puede auditar con este enlace.", `${urlBase}?vista=auditoria&token=${tokenAud}`, "Ir a Auditoría");
         enviarCorreoNotificacion(matchValsForDueño[3] || obtenerCorreoRol('Supervisor'), idPT, "Permiso de Trabajo ACTIVO - Cierre", "Al finalizar la jornada laboral o el trabajo, por favor inicie el cierre del formulario.", `${urlBase}?vista=cierre&token=${tokenCierre}`, "Ir a Cierre");
 
-        return { success: true, ptActivo: true, idPT: idPT };
       }
     }
-  }
   return { success: false, message: "Error procesando la firma secuencial." };
 }
 
-// Función auxiliar simple para leer correos de dueños si están en Config u otra columna. 
+// Función auxiliar simple para leer correos de dueños si están en Config u otra columna.  
 // Asume que si no lo encuentra usa rol por defecto o el campo de login.
 function obtenerCorreoDueño(filaDatos) {
   // Aquí idealmente deberíamos haber guardado el email del dueño. Si no, usamos fallback
@@ -571,7 +569,6 @@ function guardarCierreSecuencial(tokenActual, firmaBase64, estatusCierreSelect) 
           return { success: true, ptCerrado: true, idPT: idPT, estatusElegido: dataM_i[33] };
         }
       }
-    }
     return { success: false, message: "Token inválido." };
   } catch(e) {
     return { success: false, message: e.message };
